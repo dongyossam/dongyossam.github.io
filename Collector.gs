@@ -624,6 +624,9 @@ const LIB_KINDS_ = ['악보', '반주(MR)', '음원', '가사', '수업 자료',
 const ROOM_FILE_MAX = 20 * 1024 * 1024;
 function memberSt_(v) { const t = String(v == null ? '' : v).trim(); return isO_(t) ? 'O' : t === '신청' ? '신청' : t ? 'X' : ''; }
 function member_(token) {
+  // 운영진 메뉴에 로그인한 기기는 회원 계정이 없어도 '운영진'으로 들어와요
+  const op = token ? CacheService.getScriptCache().get('OP_' + token) : null;
+  if (op) return { id: 'op_' + hash_('op|' + op).slice(0, 12), name: op + ' (운영진)', school: '운영진', op: true };
   const id = who_(token), a = findAcc_(id);
   if (!a || memberSt_(a.r[9]) !== 'O') throw new Error('동요샘 회원만 쓸 수 있어요. 운영진이 회원으로 승인하면 열려요.');
   return { id: id, name: String(a.r[2]), school: String(a.r[3]) };

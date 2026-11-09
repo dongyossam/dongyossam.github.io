@@ -2208,7 +2208,11 @@ const DEMO_LIB = [
   { id: "d2", t: "예시: 우리 반 무지개 수업 활동지", d: "가사 바꾸기 활동지 (체험 모드 예시)", ty: "수업 자료", m: false, by: "예시 회원 D", at: "2026-09-21", link: "https://cafe.daum.net/jbdongyo" }
 ];
 let NATCFG = {};
-const isMember = () => !!(APP.live && APP.token && APP.acc && APP.acc.member === "O");
+const memberAcc = () => !!(APP.live && APP.token && APP.acc && APP.acc.member === "O");
+// 운영진 메뉴에 로그인한 기기는 회원 계정이 없어도 '운영진' 이름으로 회원방에 들어와요
+const isMember = () => !!(APP.live && (memberAcc() || OP.token));
+const roomTok = () => memberAcc() ? APP.token : OP.token;
+const myName = () => (ROOM.data && ROOM.data.me && ROOM.data.me.name) || (APP.acc && APP.acc.name) || "운영진";
 const roomOp = () => !!(ROOM.data && ROOM.data.op && OP.token);
 function roomBusy(on) { APP.busy = on; document.body.classList.toggle("busy", on); }
 async function roomLoad(quiet) {
@@ -2217,7 +2221,7 @@ async function roomLoad(quiet) {
   ROOM.loading = true; ROOM.err = "";
   try {
     if (isMember()) {
-      ROOM.data = await rpc("room", [APP.token, OP.token || ""]);
+      ROOM.data = await rpc("room", [roomTok(), OP.token || ""]);
       if (!FB.on) { ROOM.chat = ROOM.data.chat.map(chatNorm); ROOM.lastNo = ROOM.chat.length ? ROOM.chat[ROOM.chat.length - 1].no : 0; }
     } else {
       ROOM.data = null;
@@ -2226,6 +2230,7 @@ async function roomLoad(quiet) {
     }
   } catch (e) {
     if (/회원만 쓸 수/.test(e.message) && APP.acc) { APP.acc.member = APP.acc.member === "O" ? "" : APP.acc.member; ROOM.data = null; ROOM.loading = false; return roomLoad(quiet); }
+    if (/운영진 로그인이 필요/.test(e.message) || (!memberAcc() && /로그인이 필요/.test(e.message))) { OP.token = ""; store.del("dys_op"); ROOM.data = null; ROOM.loading = false; toast("운영진 로그인이 끝났어요. 운영진 메뉴에서 다시 로그인해 주세요"); return roomLoad(quiet); }
     if (/로그인이 필요/.test(e.message)) signOut("로그인이 끝났어요. 다시 로그인해 주세요");
     ROOM.err = e.message;
   } finally { ROOM.loading = false; }
@@ -2264,7 +2269,7 @@ function renderRoom(v) {
   const member = isMember();
   if (APP.live && !ROOM.loading && (member ? !ROOM.data : !ROOM.pub) && !ROOM.err) { roomLoad().then(() => { if (tab === "room") render(); }); }
   if (!APP.live && !ROOM.pub) ROOM.pub = { items: DEMO_LIB };
-  const head = `<div class="room-head"><div><span class="eyebrow">동요샘 회원방</span><h2>${member ? esc(APP.acc.name) + " 선생님, 어서 오세요" : "동요샘 선생님들의 노래 창고"}</h2></div>
+  const head = `<div class="room-head"><div><span class="eyebrow">동요샘 회원방</span><h2>${member ? (memberAcc() ? esc(APP.acc.name) + " 선생님, 어서 오세요" : "운영진으로 들어왔어요") : "동요샘 선생님들의 노래 창고"}</h2></div>
     ${member && ROOM.data ? `<span class="meta">회원 ${ROOM.data.members.length}명${roomOp() ? " · 운영진으로 보는 중" : ""}</span>` : ""}</div>`;
   let body;
   if (ROOM.err) body = `<div class="card"><p style="margin:0">회원방을 불러오지 못했어요: ${esc(ROOM.err)}</p><div class="btns"><button class="btn ghost" data-roomreload>다시 불러오기</button></div></div>`;
@@ -2317,20 +2322,20 @@ async function libSave(id) {
   const v = s => (($(s) || {}).value || "").trim();
   const it = { t: v("#lbT"), ty: v("#lbTy"), d: ($("#lbD") || {}).value || "", link: v("#lbL"), scope: (document.querySelector("input[name=lbS]:checked") || {}).value || "회원" };
   if (!it.t) { toast("자료 이름을 적어 주세요"); return; }
-  if (id) { roomDo("roomEdit", [APP.token, id, it, OP.token || ""], "고친 내용을 저장했어요"); return; }
+  if (id) { roomDo("roomEdit", [roomTok(), id, it, OP.token || ""], "고친 내용을 저장했어요"); return; }
   const f = ($("#lbF") || {}).files && $("#lbF").files[0];
   if (!f && !it.link) { toast("파일을 고르거나 링크를 적어 주세요"); return; }
   if (f && f.size > 20 * 1024 * 1024) { toast("파일이 너무 커요. 20MB까지 올릴 수 있어요"); return; }
   roomBusy(true); let data = "";
   try { data = f ? await fileToB64(f) : ""; } catch (e) { toast(e.message); roomBusy(false); return; }
   roomBusy(false);
-  roomDo("roomUpload", [APP.token, it, f ? f.name : "", f ? (f.type || "application/octet-stream") : "", data], it.scope === "회원" ? "회원만 받는 자료로 올렸어요" : "누구나 받는 자료로 올렸어요");
+  roomDo("roomUpload", [roomTok(), it, f ? f.name : "", f ? (f.type || "application/octet-stream") : "", data], it.scope === "회원" ? "회원만 받는 자료로 올렸어요" : "누구나 받는 자료로 올렸어요");
 }
 async function libGet(id) {
   if (APP.busy) return;
   roomBusy(true);
   try {
-    const r = await rpc("roomFile", [APP.token, id]);
+    const r = await rpc("roomFile", [roomTok(), id]);
     const blob = new Blob([b64ToBytes(r.b64)], { type: r.mime || "application/octet-stream" }), url = URL.createObjectURL(blob);
     const media = /^audio\//.test(r.mime) ? `<audio controls autoplay src="${url}" style="width:100%"></audio>` : /^video\//.test(r.mime) ? `<video controls src="${url}" style="width:100%;border-radius:12px"></video>` : /^image\//.test(r.mime) ? `<img src="${url}" alt="${esc(r.name)}" style="width:100%;border-radius:12px">` : "";
     $("#sheetHost").innerHTML = `<div class="scrim" data-close></div><div class="sheet" role="dialog" aria-modal="true" aria-label="자료 열기" data-roomzone><div class="in">
@@ -2401,11 +2406,11 @@ async function msUpload(replaceId) {
   try { await loadPdfLib(); const bytes = new Uint8Array(await f.arrayBuffer()); pages = (await PDFLib.PDFDocument.load(bytes, { ignoreEncryption: true })).getPageCount(); data = await fileToB64(f); }
   catch (e) { toast(/도구/.test(e.message) ? e.message : "PDF를 읽지 못했어요. 한글에서 'PDF로 저장'한 파일인지 확인해 주세요"); roomBusy(false); return; }
   roomBusy(false);
-  roomDo("msUpload", [APP.token, t, a, data, pages, replaceId || ""], `원고를 냈어요 (${pages}쪽). 운영진 검토를 기다려요`, () => { ROOM.bookSel = null; ROOM.msRe = ""; });
+  roomDo("msUpload", [roomTok(), t, a, data, pages, replaceId || ""], `원고를 냈어요 (${pages}쪽). 운영진 검토를 기다려요`, () => { ROOM.bookSel = null; ROOM.msRe = ""; });
 }
 async function msGet(id) {
   roomBusy(true);
-  try { const r = await rpc("msFile", [APP.token, id, OP.token || ""]); const url = URL.createObjectURL(new Blob([b64ToBytes(r.b64)], { type: "application/pdf" }));
+  try { const r = await rpc("msFile", [roomTok(), id, OP.token || ""]); const url = URL.createObjectURL(new Blob([b64ToBytes(r.b64)], { type: "application/pdf" }));
     const a = document.createElement("a"); a.href = url; a.download = r.name; document.body.appendChild(a); a.click(); a.remove(); toast("원고를 내려받았어요"); }
   catch (e) { toast(e.message); } finally { roomBusy(false); }
 }
@@ -2455,7 +2460,7 @@ async function bookMake() {
     let n = 3;
     for (let i = 0; i < list.length; i++) {
       say(`만드는 중 ${i + 1}/${list.length}`);
-      const r = await rpc("msFile", [APP.token, list[i].id, OP.token || ""]), src = await PDFDocument.load(b64ToBytes(r.b64), { ignoreEncryption: true });
+      const r = await rpc("msFile", [roomTok(), list[i].id, OP.token || ""]), src = await PDFDocument.load(b64ToBytes(r.b64), { ignoreEncryption: true });
       for (let p = 0; p < src.getPageCount(); p++) {
         const [emb] = await out.embedPdf(src, [p]), pg = out.addPage(A4), sc = Math.min(A4[0] / emb.width, A4[1] / emb.height);
         pg.drawPage(emb, { x: (A4[0] - emb.width * sc) / 2, y: (A4[1] - emb.height * sc) / 2, xScale: sc, yScale: sc });
@@ -2476,11 +2481,11 @@ async function bookMake() {
 
 /* 대화방: 파이어베이스가 연결되면 실시간, 아니면 몇 초마다 새 말을 받아 와요 */
 const FB = { on: false, starting: null, db: null, uid: "" };
-function chatNorm(m) { return { k: String(m.no), no: m.no, n: m.n, x: m.x, at: m.at, del: m.del, mine: APP.acc && m.id === APP.acc.id }; }
+function chatNorm(m) { return { k: String(m.no), no: m.no, n: m.n, x: m.x, at: m.at, del: m.del, mine: !!(ROOM.data && ROOM.data.me && m.id === ROOM.data.me.id) }; }
 function fbNorm(key, v) { const d = new Date(v.t || Date.now()); return { k: key, no: v.t || 0, n: v.n, x: v.x, at: localDay(d) + " " + String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"), mine: v.u === FB.uid, fb: true }; }
 async function fbStart() {
   if (FB.on) return true;
-  if (!NATCFG.firebase || !NATCFG.firebase.apiKey || !APP.token) return false;
+  if (!NATCFG.firebase || !NATCFG.firebase.apiKey || !roomTok()) return false;
   if (FB.starting) return FB.starting;
   FB.starting = (async () => {
     try {
@@ -2488,7 +2493,7 @@ async function fbStart() {
       await loadScript(g + "firebase-app-compat.js", () => window.firebase && firebase.initializeApp);
       await loadScript(g + "firebase-auth-compat.js", () => window.firebase && firebase.auth);
       await loadScript(g + "firebase-database-compat.js", () => window.firebase && firebase.database);
-      const t = await rpc("fbToken", [APP.token, OP.token || ""]);
+      const t = await rpc("fbToken", [roomTok(), OP.token || ""]);
       if (!t.token) return false;
       if (!firebase.apps.length) firebase.initializeApp(NATCFG.firebase);
       await firebase.auth().signInWithCustomToken(t.token);
@@ -2497,7 +2502,7 @@ async function fbStart() {
       q.on("child_added", s => { ROOM.chat.push(fbNorm(s.key, s.val())); ROOM.chat.sort((a, b) => a.no - b.no); ROOM.lastNo = ROOM.chat.length ? ROOM.chat[ROOM.chat.length - 1].no : 0; chatPaint(); });
       q.on("child_removed", s => { ROOM.chat = ROOM.chat.filter(m => m.k !== s.key); chatPaint(); });
       const me = FB.db.ref("online/" + FB.uid);
-      FB.db.ref(".info/connected").on("value", s => { if (s.val()) { me.onDisconnect().remove(); me.set({ n: APP.acc.name, t: firebase.database.ServerValue.TIMESTAMP }); } });
+      FB.db.ref(".info/connected").on("value", s => { if (s.val()) { me.onDisconnect().remove(); me.set({ n: myName(), t: firebase.database.ServerValue.TIMESTAMP }); } });
       FB.db.ref("online").on("value", s => { ROOM.online = Object.values(s.val() || {}).map(x => x.n); chatPaint(); });
       FB.on = true; return true;
     } catch (e) { console.warn("파이어베이스 연결 실패, 시트 대화방으로 씀", e); return false; }
@@ -2511,7 +2516,7 @@ function chatStart() {
     if (ROOM.polling) return;
     ROOM.polling = setInterval(() => {
       if (tab !== "room" || ROOM.sub !== "chat" || document.hidden) return;
-      rpc("chatGet", [APP.token, ROOM.lastNo]).then(r => { if (r.list.length) { r.list.map(chatNorm).forEach(m => { if (!ROOM.chat.some(x => x.k === m.k)) ROOM.chat.push(m); }); ROOM.lastNo = ROOM.chat[ROOM.chat.length - 1].no; chatPaint(); }
+      rpc("chatGet", [roomTok(), ROOM.lastNo]).then(r => { if (r.list.length) { r.list.map(chatNorm).forEach(m => { if (!ROOM.chat.some(x => x.k === m.k)) ROOM.chat.push(m); }); ROOM.lastNo = ROOM.chat[ROOM.chat.length - 1].no; chatPaint(); }
         if (ROOM.data && r.meet) ROOM.data.meet = r.meet; }).catch(() => {});
     }, 5000);
   });
@@ -2540,21 +2545,21 @@ async function chatSend() {
   const box = $("#chatX"), x = box ? box.value.trim() : "";
   if (!x) return; box.value = "";
   try {
-    if (FB.on) await FB.db.ref("chat").push({ u: FB.uid, n: APP.acc.name, x: x.slice(0, 500), t: firebase.database.ServerValue.TIMESTAMP });
-    else { const r = await rpc("chatSend", [APP.token, x, ROOM.lastNo]); r.list.map(chatNorm).forEach(m => { if (!ROOM.chat.some(y => y.k === m.k)) ROOM.chat.push(m); }); ROOM.lastNo = ROOM.chat.length ? ROOM.chat[ROOM.chat.length - 1].no : 0; chatPaint(); }
+    if (FB.on) await FB.db.ref("chat").push({ u: FB.uid, n: myName(), x: x.slice(0, 500), t: firebase.database.ServerValue.TIMESTAMP });
+    else { const r = await rpc("chatSend", [roomTok(), x, ROOM.lastNo]); r.list.map(chatNorm).forEach(m => { if (!ROOM.chat.some(y => y.k === m.k)) ROOM.chat.push(m); }); ROOM.lastNo = ROOM.chat.length ? ROOM.chat[ROOM.chat.length - 1].no : 0; chatPaint(); }
     chatScroll();
   } catch (e) { box.value = x; toast("보내지 못했어요: " + e.message); }
 }
 async function chatDel(k) {
   try {
     if (FB.on) await FB.db.ref("chat/" + k).remove();
-    else { await rpc("chatDel", [APP.token, +k, OP.token || ""]); const m = ROOM.chat.find(y => y.k === k); if (m) { m.del = true; m.x = ""; } chatPaint(); }
+    else { await rpc("chatDel", [roomTok(), +k, OP.token || ""]); const m = ROOM.chat.find(y => y.k === k); if (m) { m.del = true; m.x = ""; } chatPaint(); }
   } catch (e) { toast(e.message); }
 }
 
 /* 화상 회의실 */
 function meetView() {
-  const m = ROOM.data.meet, inMe = m.in.includes(APP.acc.name);
+  const m = ROOM.data.meet, inMe = m.in.includes(myName());
   return `<div class="card meet"><span class="meet-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="2" y="6" width="14" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M16 10l6-3v10l-6-3z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg></span>
       <div class="min"><h3>동요샘 화상 회의실</h3><p style="margin:0">${m.url ? "버튼을 누르면 회의실이 새 창으로 열려요. 들어간 선생님 이름이 여기에 보여서 누가 회의 중인지 알 수 있어요." : "아직 회의실 주소가 없어요. 운영진이 구글 미트 같은 회의 주소를 걸어 두면 열려요."}</p>
       <span class="meta">${m.in.length ? "지금 회의실에 들어간 선생님: " + m.in.map(esc).join(", ") : "지금 회의실에 들어간 선생님이 없어요"}</span>
@@ -2576,20 +2581,20 @@ document.addEventListener("click", e => {
   if (t.hasAttribute("data-libnew")) { libForm(null); return; }
   if (d.libedit) { libForm(ROOM.data.items.find(i => i.id === d.libedit)); return; }
   if (d.libsave !== undefined) { libSave(d.libsave); return; }
-  if (d.libdel) { if (confirmTwice(t, "한 번 더 누르면 지워요")) roomDo("roomEdit", [APP.token, d.libdel, { hide: true }, OP.token || ""], "자료를 지웠어요"); return; }
+  if (d.libdel) { if (confirmTwice(t, "한 번 더 누르면 지워요")) roomDo("roomEdit", [roomTok(), d.libdel, { hide: true }, OP.token || ""], "자료를 지웠어요"); return; }
   if (d.libget) { libGet(d.libget); return; }
-  if (d.attend) { roomDo("roomAttend", [APP.token, d.attend], "", r => toast(r.on ? "참석으로 표시했어요" : "참석 표시를 풀었어요")); return; }
+  if (d.attend) { roomDo("roomAttend", [roomTok(), d.attend], "", r => toast(r.on ? "참석으로 표시했어요" : "참석 표시를 풀었어요")); return; }
   if (t.hasAttribute("data-evadd")) { const v = s => ($(s) || {}).value || ""; roomDo("opEvent", [OP.token, { d: v("#evD"), tm: v("#evTm"), t: v("#evT").trim(), p: v("#evP").trim(), big: $("#evBig").checked }], "일정을 올렸어요"); return; }
   if (d.evdel) { if (confirmTwice(t, "한 번 더 누르면 지워요")) roomDo("opEventDel", [OP.token, d.evdel], "일정을 지웠어요"); return; }
   if (t.hasAttribute("data-ntadd")) { roomDo("opNotice", [OP.token, $("#ntT").value, $("#ntB").value, $("#ntPin").checked], "공지를 올렸어요"); return; }
   if (d.ntpin) { roomDo("opNoticePin", [OP.token, d.ntpin]); return; }
   if (d.ntdel) { if (confirmTwice(t, "한 번 더 누르면 지워요")) roomDo("opNoticeDel", [OP.token, d.ntdel], "공지를 지웠어요"); return; }
-  if (d.cmadd) { const box = $("#cm_" + d.cmadd); if (!box || !box.value.trim()) { toast("댓글을 적어 주세요"); return; } roomDo("roomComment", [APP.token, d.cmadd, box.value], "댓글을 달았어요"); return; }
-  if (d.cmdel) { roomDo("roomCommentDel", [APP.token, d.cmdel, OP.token || ""], "댓글을 지웠어요"); return; }
+  if (d.cmadd) { const box = $("#cm_" + d.cmadd); if (!box || !box.value.trim()) { toast("댓글을 적어 주세요"); return; } roomDo("roomComment", [roomTok(), d.cmadd, box.value], "댓글을 달았어요"); return; }
+  if (d.cmdel) { roomDo("roomCommentDel", [roomTok(), d.cmdel, OP.token || ""], "댓글을 지웠어요"); return; }
   if (t.hasAttribute("data-msup")) { msUpload(ROOM.msRe || ""); return; }
   if (d.msre) { const m = ROOM.data.ms.find(x => x.id === d.msre); ROOM.msRe = d.msre; $("#msT").value = m.t; $("#msA").value = m.by; $("#msT").scrollIntoView({ block: "center", behavior: "smooth" }); toast("새 PDF를 고르고 [원고 내기]를 누르면 바뀌어요"); return; }
   if (d.msget) { msGet(d.msget); return; }
-  if (d.msdel) { if (confirmTwice(t, "한 번 더 누르면 빼요")) roomDo("msDel", [APP.token, d.msdel, OP.token || ""], "원고를 뺐어요", () => { ROOM.bookSel = null; }); return; }
+  if (d.msdel) { if (confirmTwice(t, "한 번 더 누르면 빼요")) roomDo("msDel", [roomTok(), d.msdel, OP.token || ""], "원고를 뺐어요", () => { ROOM.bookSel = null; }); return; }
   if (d.msok !== undefined) { roomDo("opMsReview", [OP.token, d.msok, !!d.ok]); return; }
   if (t.hasAttribute("data-bktitle")) { roomDo("opBookTitle", [OP.token, $("#bkTitle").value], "곡집 제목을 바꿨어요", () => { ROOM.bookSel = null; }); return; }
   if (t.hasAttribute("data-bkall")) { ROOM.bookSel = new Set(ROOM.data.ms.map(m => m.id)); render(); return; }
@@ -2597,9 +2602,9 @@ document.addEventListener("click", e => {
   if (t.hasAttribute("data-bkmake")) { bookMake(); return; }
   if (t.hasAttribute("data-chatsend")) { chatSend(); return; }
   if (d.chatdel) { chatDel(d.chatdel); return; }
-  if (t.hasAttribute("data-meetgo")) { const u = ROOM.data.meet.url; window.open(u, "_blank", "noopener"); rpc("meetIn", [APP.token, true]).then(m => { ROOM.data.meet = m; if (tab === "room") render(); }).catch(() => {}); return; }
-  if (t.hasAttribute("data-meetout")) { rpc("meetIn", [APP.token, false]).then(m => { ROOM.data.meet = m; render(); toast("회의에서 나왔다고 표시했어요"); }).catch(er => toast(er.message)); return; }
-  if (t.hasAttribute("data-meetre")) { roomDo("chatGet", [APP.token, 0]); return; }
+  if (t.hasAttribute("data-meetgo")) { const u = ROOM.data.meet.url; window.open(u, "_blank", "noopener"); rpc("meetIn", [roomTok(), true]).then(m => { ROOM.data.meet = m; if (tab === "room") render(); }).catch(() => {}); return; }
+  if (t.hasAttribute("data-meetout")) { rpc("meetIn", [roomTok(), false]).then(m => { ROOM.data.meet = m; render(); toast("회의에서 나왔다고 표시했어요"); }).catch(er => toast(er.message)); return; }
+  if (t.hasAttribute("data-meetre")) { roomDo("chatGet", [roomTok(), 0]); return; }
   if (t.hasAttribute("data-meetset")) { roomDo("opMeet", [OP.token, $("#meetU").value], "회의실 주소를 저장했어요"); return; }
 }, true);
 document.addEventListener("change", e => { const b = e.target.closest("[data-bksel]"); if (!b) return; b.checked ? ROOM.bookSel.add(b.dataset.bksel) : ROOM.bookSel.delete(b.dataset.bksel); const k = document.querySelector("[data-bkmake]"); if (k) k.textContent = `곡집 PDF 만들기 (${ROOM.bookSel.size}곡)`; });
