@@ -1,0 +1,30 @@
+동요샘 회원방 - 파이어베이스 실시간 데이터베이스 규칙
+=====================================================
+
+넣는 곳: 파이어베이스 콘솔 > 빌드 > Realtime Database > 규칙 탭
+아래 { 부터 마지막 } 까지를 모두 복사해 원래 내용을 지우고 붙여 넣은 뒤 [게시]를 누르세요.
+
+- 노래상자 서버가 '동요샘 회원'으로 승인한 계정에게만 출입증을 주고, 출입증이 있어야 대화를 읽고 쓸 수 있어요.
+- 자기가 쓴 말만 지울 수 있어요. (운영진 메뉴에 로그인한 상태로 대화방에 들어오면 다른 말도 지울 수 있어요)
+- 한 번에 500자까지 보낼 수 있어요.
+
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "chat": {
+      ".read": "auth != null && auth.token.m === true",
+      ".indexOn": ["t"],
+      "$id": {
+        ".write": "auth != null && auth.token.m === true && ((!data.exists() && newData.child('u').val() === auth.uid) || (data.exists() && !newData.exists() && (data.child('u').val() === auth.uid || auth.token.op === true)))",
+        ".validate": "newData.hasChildren(['u', 'n', 'x', 't']) && newData.child('n').val() === auth.token.n && newData.child('x').isString() && newData.child('x').val().length > 0 && newData.child('x').val().length <= 500 && newData.child('t').isNumber() && newData.child('t').val() <= now"
+      }
+    },
+    "online": {
+      ".read": "auth != null && auth.token.m === true",
+      "$uid": {
+        ".write": "auth != null && auth.token.m === true && auth.uid === $uid"
+      }
+    }
+  }
+}

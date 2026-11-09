@@ -1,0 +1,12 @@
+{
+  "collector": "https://script.google.com/macros/s/AKfycbwAkGNNbcUOXZEG3gjvfUJs0S8aMU31c6ixxnypzmskqM2_ndh4Y6izA17YyuYXDp7aEg/exec",
+  "firebase": {
+    "apiKey": "AIzaSyAs7COF8LYZbPmupoMNzq5AyOwmFAx24YM",
+    "authDomain": "dongyo-ssam.firebaseapp.com",
+    "databaseURL": "https://dongyo-ssam-default-rtdb.asia-southeast1.firebasedatabase.app",
+    "projectId": "dongyo-ssam",
+    "storageBucket": "dongyo-ssam.firebasestorage.app",
+    "messagingSenderId": "673298864577",
+    "appId": "1:673298864577:web:f5a6b15c95cc351c04b740"
+  }
+}
