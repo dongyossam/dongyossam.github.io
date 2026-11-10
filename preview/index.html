@@ -835,7 +835,7 @@ html{overflow-y:scroll;scrollbar-gutter:stable}
   .ev .btns{grid-column:2}
 }
 /* 마우스를 올리면 톡 튀어나오기 */
-@media (hover:hover) and (prefers-reduced-motion:no-preference){
+@media (any-hover:hover){
   nav#tabs button,.room-tabs .chip,.chips .chip,.btn,.app-install,.vote,.cafe,.song,.mrow,.op-tile,.admin-nav button,.room-entry,.person.dmp,.cev,.lib-row,.ms-row{transition:transform .16s cubic-bezier(.3,1.6,.5,1),box-shadow .16s ease,filter .16s ease}
   nav#tabs button{position:relative}
   @media (min-width:900px){nav#tabs{overflow:visible!important}}
@@ -866,7 +866,7 @@ html{overflow-y:scroll;scrollbar-gutter:stable}
 .biz .card{border-top:6px solid var(--c)!important}
 #subnav button[aria-current="page"]{box-shadow:0 4px 0 color-mix(in srgb,var(--c3) 60%,#000)}
 .biz .card{cursor:pointer;font:inherit;color:inherit;text-align:left;width:100%}
-@media (hover:hover) and (prefers-reduced-motion:no-preference){
+@media (any-hover:hover){
   #subnav button,.btn,.app-install,.go,.biz .card,.chip,.more,.linkbtn,.playerbar .pb>*,.home .logo,nav#tabs button{transition:transform .18s cubic-bezier(.3,1.6,.5,1),box-shadow .18s ease,filter .18s ease,background-color .16s ease,border-color .16s ease!important}
   nav#tabs button:hover{transform:translateY(-6px) scale(1.04)!important;filter:brightness(1.06) saturate(1.05);box-shadow:0 6px 0 color-mix(in srgb,var(--c) 62%,#000),var(--lift),inset 0 2px 0 rgba(255,255,255,.35)!important}
   nav#tabs button:active{transform:translateY(-1px) scale(1)!important;box-shadow:0 1px 0 color-mix(in srgb,var(--c) 62%,#000),inset 0 2px 0 rgba(255,255,255,.25)!important}
@@ -879,6 +879,7 @@ html{overflow-y:scroll;scrollbar-gutter:stable}
   .playerbar .pb>*:hover{transform:translateY(-3px) scale(1.08);box-shadow:0 4px 0 rgba(0,0,0,.35),0 8px 14px rgba(0,0,0,.25)}
   .playerbar .pb>*:active{transform:translateY(1px) scale(.96);box-shadow:none}
 }
+@media (prefers-reduced-motion:reduce){nav#tabs button,#subnav button,.btn,.app-install,.go,.biz .card,.chip,.more,.linkbtn,.playerbar .pb>*,.song,.mrow,.cafe,.op-tile,.room-entry,.lib-row,.ms-row,.vote,.stamp,.tile{transition-duration:.01s!important}}
 /* 시안: 동요샘 홈 */
 nav#tabs button:nth-child(1){--c:var(--c0)}nav#tabs button:nth-child(2){--c:var(--c1)}nav#tabs button:nth-child(3){--c:var(--c3)}nav#tabs button:nth-child(4){--c:var(--c4)}
 #subnav{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin:12px 0 0}
