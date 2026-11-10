@@ -1093,6 +1093,7 @@ function statusLine() {
     `<button class="btn ghost" data-glogin>로그인</button><button class="btn" data-glogin data-join>가입 신청</button>`);
   if (!APP.acc) return bar("계정을 확인하는 중이에요");
   const st = APP.acc.status;
+  if (st === "none" && APP.acc.op) return bar(`<b>동요샘 관리 계정</b>(${esc(APP.acc.email)})으로 로그인했어요. 운영진 메뉴에서 계정 승인·곡 관리·회원방을 관리해요.`, `<button class="btn" data-tab="op">운영진 메뉴</button><button class="btn ghost" data-tab="room">회원방</button><button class="btn ghost" data-logout>로그아웃</button>`, "on");
   if (st === "none") return bar(`<b>${esc(APP.acc.email)}</b> 계정으로 로그인했어요. 이름·학교·지역을 적어 가입 신청을 마쳐 주세요.`, `<button class="btn" data-tab="mine">가입 신청하기</button>`);
   if (st === "wait") return bar(`<b>${esc(APP.acc.name)} 선생님</b>, 가입 신청을 받았어요. 운영진이 승인하면 쓸 수 있어요.`, `<button class="btn ghost" data-recheck>다시 확인하기</button>`);
   if (st === "X") return bar("가입이 승인되지 않았어요. 운영진에게 문의해 주세요.", `<button class="btn ghost" data-logout>로그아웃</button>`);
@@ -1282,6 +1283,10 @@ function renderMine(v) {
   } else if (!APP.acc || APP.acc.status !== "O") {
     const st = APP.acc ? APP.acc.status : "";
     top = !APP.acc ? `<div class="card"><span class="meta">계정을 확인하는 중이에요</span></div>`
+      : st === "none" && APP.acc.op ? `<div class="card"><span class="eyebrow">동요샘 관리 계정</span>
+        <p style="margin:0">${esc(APP.acc.email)} 계정은 노래상자를 관리하는 계정이라 가입 신청 없이 늘 운영진이에요. 계정 승인, 곡 관리, 오늘의 동요, 회원방 관리는 운영진 메뉴에서 해요.</p>
+        <div class="btns"><button class="btn" data-tab="op">운영진 메뉴로 가기</button><button class="btn ghost" data-logout>로그아웃</button></div>
+        <p class="meta" style="margin:0">반 기록(도장·투표)은 선생님 개인 구글 계정으로 가입해서 남겨 주세요.</p></div>`
       : st === "none" ? `<div class="card auth"><span class="eyebrow">가입 신청</span>
         <p class="meta" style="margin:0">${esc(APP.acc.email)} 계정으로 신청해요. 동요샘 운영진이 확인하고 승인하면 쓸 수 있어요.</p>
         <div class="form2"><label class="fld"><span class="label">선생님 이름</span><input type="text" id="suName" maxlength="20" placeholder="예: 김햇살"></label>
@@ -1508,8 +1513,8 @@ async function afterAuth(on) {
   if (on) {
     try { setAcc(await rpc("me", [APP.token])); } catch (e) { toast(e.message); }
     await loadNational();
-    if (APP.joinAfter || (APP.acc && APP.acc.status === "none" && tab !== "op")) { tab = "mine"; document.querySelectorAll("#tabs button").forEach(b => b.setAttribute("aria-selected", b.dataset.tab === tab)); } APP.joinAfter = false;
-    toast(APP.acc && APP.acc.status === "O" ? (ME.configured ? "로그인했어요" : "로그인했어요. 우리 반을 먼저 만들어 주세요") : APP.acc && APP.acc.status === "none" ? "처음 오셨네요. 가입 신청을 해 주세요" : "로그인했어요");
+    if (!(APP.acc && APP.acc.op && APP.acc.status === "none") && (APP.joinAfter || (APP.acc && APP.acc.status === "none" && tab !== "op"))) { tab = "mine"; document.querySelectorAll("#tabs button").forEach(b => b.setAttribute("aria-selected", b.dataset.tab === tab)); } APP.joinAfter = false;
+    toast(APP.acc && APP.acc.op && APP.acc.status === "none" ? "동요샘 관리 계정으로 로그인했어요" : APP.acc && APP.acc.status === "O" ? (ME.configured ? "로그인했어요" : "로그인했어요. 우리 반을 먼저 만들어 주세요") : APP.acc && APP.acc.status === "none" ? "처음 오셨네요. 가입 신청을 해 주세요" : "로그인했어요");
   } else { APP.acc = null; setMe(null); }
   render();
 }
