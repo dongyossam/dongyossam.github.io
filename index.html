@@ -1536,6 +1536,11 @@ function openOutside() {
   if (IS_KAKAO) { location.href = "kakaotalk://web/openExternal?url=" + encodeURIComponent(url); return; }
   if (!IS_IOS) { location.href = "intent://" + url.replace(/^https?:\/\//, "") + "#Intent;scheme=https;package=com.android.chrome;end"; return; }
 }
+/* 카카오톡 안에서 열면 처음 한 번 바로 기본 브라우저(크롬·사파리)로 넘겨요 */
+if (IS_KAKAO) {
+  let tried = false; try { tried = sessionStorage.getItem("dys-out") === "1"; sessionStorage.setItem("dys-out", "1"); } catch (e) {}
+  if (!tried) openOutside();
+}
 function inappHelp() {
   $("#sheetHost").innerHTML = `<div class="scrim" data-close></div><div class="sheet" role="dialog" aria-modal="true" aria-label="다른 브라우저로 열기"><div class="in">
     <button class="btn ghost close" data-close>닫기</button><h3>다른 브라우저로 열어 주세요</h3>
