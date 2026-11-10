@@ -816,6 +816,13 @@ body.kara-on .mini-video{z-index:41;top:max(56px,env(safe-area-inset-top));botto
   .song:hover,.mrow:hover,.lib-row:hover,.ms-row:hover{transform:translateY(-2px);box-shadow:0 6px 14px rgba(43,58,85,.12)}
   .admin-nav button:hover{transform:translateX(3px)}
   .cev:hover{transform:scale(1.04)}
+  .chip,.more,.linkbtn,.copy-mail,.kara-btn,.stamp,.crow,.oprow,.cal-day,.tile{transition:transform .16s cubic-bezier(.3,1.6,.5,1),box-shadow .16s ease,background-color .16s ease,border-color .16s ease}
+  .chip:hover{transform:translateY(-2px) scale(1.06);border-style:solid;border-color:var(--c4);background:var(--c4-soft);box-shadow:0 4px 10px rgba(43,58,85,.14)}
+  .chip[aria-pressed="true"]:hover{background:var(--c3-soft);border-color:var(--c3)}
+  .room-tabs .chip.on:hover{background:var(--c2);border-color:var(--c2)}
+  .more:hover,.linkbtn:hover{transform:translateY(-1px) scale(1.06);color:var(--ink)}
+  .stamp:hover,.tile:hover{transform:translateY(-3px) rotate(-1deg)}
+  .crow:hover,.oprow:hover{transform:translateX(3px)}
 }
 </style>
 </head>
