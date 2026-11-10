@@ -9,7 +9,7 @@
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="동요샘 노래상자">
 <meta property="og:title" content="동요샘 홈 시안 (미리보기)">
-<meta property="og:description" content="동요샘 연구회 홈을 첫 화면으로 바꾸는 시안이에요. 의견을 들려 주세요.">
+<meta property="og:description" content="동요샘 초등음악교육연구회 홈을 첫 화면으로 바꾸는 시안이에요. 의견을 들려 주세요.">
 <meta property="og:url" content="https://dongyossam.github.io/preview/">
 <meta property="og:image" content="https://dongyossam.github.io/img/og-logo.png">
 <meta property="og:image:width" content="1200">
@@ -489,6 +489,12 @@ body{padding-bottom:0!important}
   .scene .h1t span{text-shadow:5px 0 0 #fff,-5px 0 0 #fff,0 5px 0 #fff,0 -5px 0 #fff,4px 4px 0 #fff,-4px 4px 0 #fff,4px -4px 0 #fff,-4px -4px 0 #fff,6px 2px 0 #fff,-6px 2px 0 #fff,2px 6px 0 #fff,-2px 6px 0 #fff,0 11px 0 rgba(43,58,85,.28)}}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .scene .h1t span{text-shadow:4px 0 0 #1D2742,-4px 0 0 #1D2742,0 4px 0 #1D2742,0 -4px 0 #1D2742,3px 3px 0 #1D2742,-3px 3px 0 #1D2742,3px -3px 0 #1D2742,-3px -3px 0 #1D2742,0 9px 0 rgba(0,0,0,.4)}}
 
+.scene .h1t.long{font-size:30px!important;letter-spacing:0}
+@media (min-width:1000px){.scene .h1t.long{font-size:44px!important}}
+@media (max-width:480px){.scene .h1t.long{font-size:17px!important;-webkit-text-stroke:2px currentColor!important}.scene .h1t.long span{text-shadow:2px 0 0 #fff,-2px 0 0 #fff,0 2px 0 #fff,0 -2px 0 #fff,2px 2px 0 #fff,-2px 2px 0 #fff,0 5px 0 rgba(43,58,85,.28)}}
+@media (max-width:699px){.scene .title:has(.h1t.long){right:min(15vw,60px)}}
+@media (max-width:480px){.scene .title:has(.h1t.long) .logo{height:58px!important;width:auto}}
+@media (max-width:380px){.scene .title:has(.h1t.long){right:36px}}
 /* 로그인 · 가입 · 반 고르기 */
 .auth .fld input,.auth .fld select{width:100%}
 .copy-mail{font-weight:700;color:var(--ink);word-break:break-all}
@@ -908,7 +914,7 @@ nav#tabs button:nth-child(1){--c:var(--c0)}nav#tabs button:nth-child(2){--c:var(
     <g class="float f2" fill="var(--c5)"><ellipse cx="370" cy="96" rx="6" ry="4.5" transform="rotate(-20 370 96)"/><ellipse cx="388" cy="90" rx="6" ry="4.5" transform="rotate(-20 388 90)"/>
       <rect x="374.5" y="74" width="2.2" height="22"/><rect x="392.5" y="68" width="2.2" height="22"/><path d="M374.5 74l20-6v4l-20 6z"/></g>
   </svg>
-  <div class="title"><h1><button class="home" data-tab="home" title="첫 화면으로" aria-label="동요샘 첫 화면으로"><img class="logo" src="../img/logo.png" alt="동요샘" width="371" height="272"><span class="tbox"><span class="h1t" id="h1t"><span class="r0">연</span><span class="r1">구</span><span class="r2">회</span></span><span class="h1sub" id="h1sub">동요를 사랑하는 선생님들이 함께 만들고 불러요</span></span></button></h1></div>
+  <div class="title"><h1><button class="home" data-tab="home" title="첫 화면으로" aria-label="동요샘 첫 화면으로"><img class="logo" src="../img/logo.png" alt="동요샘" width="371" height="272"><span class="tbox"><span class="h1t long" id="h1t"><span class="r0">초</span><span class="r1">등</span><span class="r2">음</span><span class="r3">악</span><span class="r0">교</span><span class="r1">육</span><span class="r2">연</span><span class="r3">구</span><span class="r0">회</span></span><span class="h1sub" id="h1sub">동요를 사랑하는 선생님들이 함께 만들고 불러요</span></span></button></h1></div>
   <div class="hd-acts"><button class="app-install qr-btn" id="qrOpen" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/></g><g fill="currentColor"><rect x="5.5" y="5.5" width="2" height="2"/><rect x="16.5" y="5.5" width="2" height="2"/><rect x="5.5" y="16.5" width="2" height="2"/><rect x="14" y="14" width="3" height="3"/><rect x="18" y="18" width="3" height="3"/><rect x="18" y="14" width="3" height="2"/><rect x="14" y="18" width="2" height="3"/></g></svg><span>QR로 들어오기</span></button>
   <button class="app-install" id="appInstall" type="button" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="2" width="12" height="20" rx="3" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 7v7M9 11l3 3 3-3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>앱 아이콘 만들기</span></button></div>
   </div>
@@ -1242,7 +1248,7 @@ function navSync() {
   document.querySelectorAll("#tabs button").forEach(b => b.setAttribute("aria-selected", b.dataset.group === "songbox" ? inBox : b.dataset.tab === tab));
   $("#subnav").innerHTML = inBox ? `<span class="sub-title">노래상자</span>${SONGBOX.map(([k, n]) => `<button data-tab="${k}"${k === tab ? ' aria-current="page"' : ""}>${n}</button>`).join("")}` : "";
   const h = $("#h1t"), sub = $("#h1sub");
-  if (h) { h.innerHTML = (inBox ? "노래상자" : "연구회").split("").map((c, i) => `<span class="r${i}">${c}</span>`).join(""); sub.textContent = inBox ? "선생님이 지은 동요를 함께 불러요" : "동요를 사랑하는 선생님들이 함께 만들고 불러요"; }
+  if (h) { const tt = inBox ? "노래상자" : "초등음악교육연구회"; h.classList.toggle("long", tt.length > 5); h.innerHTML = tt.split("").map((c, i) => `<span class="r${i % 4}">${c}</span>`).join(""); sub.textContent = inBox ? "선생님이 지은 동요를 함께 불러요" : "동요를 사랑하는 선생님들이 함께 만들고 불러요"; if (typeof fitTitleSub === "function") requestAnimationFrame(fitTitleSub); }
 }
 function render() {
   navSync();
