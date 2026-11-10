@@ -180,6 +180,10 @@ textarea{min-height:110px;resize:vertical;font-family:var(--body);font-size:16px
 .variant .v{white-space:pre-line;font-family:var(--body);font-size:16px;line-height:1.7}
 .variant footer{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:12.5px;color:var(--muted)}
 .close{justify-self:end}
+.sheet-top{display:flex;justify-content:flex-end;gap:8px}
+.sheet.full{top:0;max-height:none;border-radius:0;border-top:0}
+.sheet.full .in{max-width:1100px}
+@media (min-width:1000px){.sheet.full .in{grid-template-columns:minmax(0,1fr)}.sheet.full h3{font-size:36px}}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:8px 18px;border-radius:999px;font-family:var(--body);font-weight:700;font-size:15px;z-index:30;max-width:90%}
 @media (prefers-reduced-motion:no-preference){.sheet{animation:up .22s ease-out}@keyframes up{from{transform:translateY(24px);opacity:.6}}
   .stamp.on{animation:press .3s ease-out}@keyframes press{from{transform:scale(1.35) rotate(-8deg)}}}
@@ -899,7 +903,8 @@ const inSeason = (s, se) => seasonsOf(s).includes(se);
 const seasonLabel = s => { const a = seasonsOf(s); return a.length === 4 ? "사계절" : a.join("·"); };
 const noConcert = c => !String(c || "").trim() || /^[-–—\s]+$/.test(String(c));
 function creditLine(s) {
-  const a = s.lyricist, c = s.composer, pre = s.type === "편곡" ? "원곡 " : "";
+  const dash = v => /^[-–—\s]*$/.test(String(v || "")) ? "" : v;
+  const a = dash(s.lyricist), c = dash(s.composer), pre = s.type === "편곡" ? "원곡 " : "";
   const base = a && a === c ? pre + "작사·작곡 " + a : [a && pre + "작사 " + a, c && pre + "작곡 " + c].filter(Boolean).join(" · ");
   return [base, s.type === "편곡" && s.arranger ? "편곡 " + s.arranger : ""].filter(Boolean).join(" · ");
 }
@@ -1366,8 +1371,8 @@ function openSong(id, o) {
   const vs = variantsFor(id), on = myVoteSong() === id;
   const prev = $(".sheet"), same = prev && +prev.dataset.song === id;
   const keep = same ? prev.scrollTop : 0, openKind = (o && o.media) || (same && prev.querySelector(".vbox") ? prev.querySelector(".vbox").dataset.kind : "");
-  $("#sheetHost").innerHTML = `<div class="scrim" data-close></div><div class="sheet" role="dialog" aria-modal="true" aria-label="${esc(s.title)}" data-song="${id}"><div class="in">
-    <button class="btn ghost close" data-close>닫기</button>
+  $("#sheetHost").innerHTML = `<div class="scrim" data-close></div><div class="sheet${store.get("dys-sheet-full", false) ? " full" : ""}" role="dialog" aria-modal="true" aria-label="${esc(s.title)}" data-song="${id}"><div class="in">
+    <div class="sheet-top"><button class="btn ghost" data-sheetfull>${store.get("dys-sheet-full", false) ? "작게 보기" : "전체 화면으로 보기"}</button><button class="btn ghost" data-close>닫기</button></div>
     <div><h3>${esc(s.title)}</h3><span class="meta">${esc(s.lyric)}</span></div>
     <div class="chips">${s.themes.map(t => `<span class="tag">${esc(t)}</span>`).join("")}${s.season ? `<span class="tag">${esc(seasonLabel(s))}</span>` : ""}${s.type === "편곡" ? `<span class="tag arr">편곡</span>` : ""}</div>
     <div id="vHost">${openKind ? mediaBox(s, openKind) : ""}</div>
@@ -1513,7 +1518,7 @@ async function googleLogin() {
   if (!APP.auth) { toast("로그인을 준비하는 중이에요. 잠시 뒤 다시 눌러 주세요"); return; }
   if (INAPP) { inappHelp(); return; }
   try { await firebase.auth().signInWithPopup(new firebase.auth.GoogleAuthProvider()); }
-  catch (e) { if (!/popup-closed|cancelled-popup/.test(e.code || "")) toast("로그인하지 못했어요: " + (e.code === "auth/popup-blocked" ? "팝업이 막혔어요. 주소창 오른쪽에서 팝업을 허용해 주세요" : e.message || e.code)); }
+  catch (e) { if (!/popup-closed|cancelled-popup/.test(e.code || "")) toast("로그인하지 못했어요: " + (e.code === "auth/popup-blocked" ? "팝업이 막혔어요. 주소창 오른쪽에서 팝업을 허용해 주세요" : e.code === "auth/unauthorized-domain" ? "파이어베이스 승인된 도메인에 이 주소가 없어요. 운영진에게 알려 주세요" : e.code === "auth/operation-not-allowed" ? "파이어베이스에서 Google 로그인이 꺼져 있어요. 운영진에게 알려 주세요" : e.message || e.code)); }
 }
 /* 동요샘 회원 신청: 내년도 도교육청 교과연구회 등록 명단용 직위·휴대전화·동의 */
 const POSITIONS = ["교사", "수석교사", "교감", "교장", "장학사", "장학관", "교육연구사", "교육연구관", "교수", "강사"];
@@ -1581,6 +1586,7 @@ document.addEventListener("click", e => {
   const d = t.dataset;
   if (d.tab) { goTab(d.tab); return; }
   if (t.hasAttribute("data-close")) { $("#sheetHost").innerHTML = ""; return; }
+  if (t.hasAttribute("data-sheetfull")) { const sh = $(".sheet"), on = !sh.classList.contains("full"); sh.classList.toggle("full", on); store.set("dys-sheet-full", on); t.textContent = on ? "작게 보기" : "전체 화면으로 보기"; return; }
   if (d.open) { openSong(+d.open); return; }
   if (d.chart) { chartMode = d.chart; render(); return; }
   if (d.period) { PERIOD = d.period; store.set("dys-period", PERIOD); render(); return; }
