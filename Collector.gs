@@ -23,7 +23,7 @@ const MAX_CLASSES = 20;     // 계정 하나에 만들 수 있는 반
 const REGIONS_ = ['서울','부산','대구','인천','광주','대전','울산','세종','경기','강원','충북','충남','전북','전남','경북','경남','제주'];
 
 const SH_ACC = '계정', SH_CLASSES = '반', SH_SONGS = '곡 목록', SH_SET = '설정', SH_LYRICS = '바꾼 가사', SH_RELAY = '릴레이 기록', SH_LOG = '운영 기록', SH_TODAY = '오늘의 동요';
-const SH_LIB = '회원방 자료', SH_EVT = '회원방 일정', SH_NOTE = '회원방 공지', SH_CMT = '회원방 댓글', SH_CHAT = '회원방 대화', SH_MS = '곡집 원고';
+const SH_LIB = '회원방 자료', SH_EVT = '회원방 일정', SH_NOTE = '회원방 공지', SH_CMT = '회원방 댓글', SH_CHAT = '회원방 대화', SH_MS = '곡집 원고', SH_REV = '회원방 후기';
 const HEAD_ = {
   '계정': ['이메일(구글)', '구글 UID', '선생님 이름', '학교', '지역', '신청한 날', '승인', '마지막 로그인', '메모', '동요샘 회원', '직위', '휴대전화', '도 등록 명단 동의', '회원 신청한 때', '역할'],
   '반': ['반 ID', '아이디', '반 이름', '지역', '도장', '투표 달', '투표 곡', '좋아요', '릴레이', '만든 날', '마지막 기록', '숨김'],
@@ -38,7 +38,8 @@ const HEAD_ = {
   '회원방 공지': ['공지 ID', '제목', '내용', '쓴 사람', '쓴 때', '고정'],
   '회원방 댓글': ['댓글 ID', '공지 ID', '아이디', '이름', '내용', '쓴 때'],
   '회원방 대화': ['번호', '때', '아이디', '이름', '내용', '지움'],
-  '곡집 원고': ['원고 ID', '곡집', '곡 제목', '지은이', '아이디', '이름', '파일 ID', '쪽수', '검토', '낸 때']
+  '곡집 원고': ['원고 ID', '곡집', '곡 제목', '지은이', '아이디', '이름', '파일 ID', '쪽수', '검토', '낸 때'],
+  '회원방 후기': ['후기 ID', '제목', '날짜', '장소', '참석 인원', '나눔 선생님', '진행 내용', '사진(파일 ID)', '쓴 사람', '쓴 때', '공감(아이디)']
 };
 
 /************ 입구 ************/
@@ -108,6 +109,7 @@ function sheet_(name) {
     if (name === SH_SONGS) seedSongs_(sh);
     if (name === SH_TODAY) sh.getRange('A:A').setNumberFormat('@');
     if (name === SH_EVT) sh.getRange('B:C').setNumberFormat('@');
+    if (name === SH_REV) sh.getRange('C:C').setNumberFormat('@');
     if (name === SH_SET) sh.getRange(2, 1, 4, 3).setValues([
       ['릴레이 이름', '첫 번째 릴레이', '이름을 바꾸면 새 릴레이가 처음부터 시작돼요'],
       ['릴레이 곡번호', 3, '곡 목록의 곡번호'],
@@ -671,6 +673,15 @@ function findRow_(name, id) {
   return null;
 }
 function hm_(v) { return v instanceof Date ? Utilities.formatDate(v, TZ_, 'HH:mm') : String(v == null ? '' : v).trim().slice(0, 5); }
+// 링크 여러 개: 줄마다 '설명 | 주소' 또는 주소만 (최대 10줄)
+function links_(v) {
+  const lines = String(v || '').replace(/\r/g, '').split('\n').map(function (x) { return x.trim(); }).filter(String).slice(0, 10);
+  return lines.map(function (ln) {
+    const i = ln.lastIndexOf('|'), label = i >= 0 ? clean_(ln.slice(0, i), 40) : '', url = cleanUrl_(i >= 0 ? ln.slice(i + 1) : ln);
+    if (!url) throw new Error('링크는 줄마다 "설명 | https://주소" 또는 https:// 로 시작하는 주소로 적어 주세요: ' + ln.slice(0, 40));
+    return label ? label + ' | ' + url : url;
+  }).join('\n');
+}
 function cleanUrl_(v) { const t = String(v || '').trim().slice(0, 300); return /^https?:\/\/[^\s<>"]+$/.test(t) ? t : ''; }
 function longText_(v, max) { return String(v == null ? '' : v).replace(/\r/g, '').replace(/[<>\u0000-\u0009\u000b-\u001f]/g, '').trim().slice(0, max); }
 function subFolder_(key, name) {
@@ -762,15 +773,15 @@ function room_(token, opToken) {
   });
   const members = Object.keys(accs).filter(function (k) { return accs[k].m; }).map(function (k) { return { n: accs[k].n, sc: accs[k].sc }; });
   u.hid = hash_('c|' + u.id).slice(0, 12);
-  return { me: u, op: isOp_(opToken), kinds: LIB_KINDS_, items: items, notices: notices, events: events, book: book, ms: ms, members: members, meet: meetState_(), chat: chatTail_(0), today: today_() };
+  const reviews = values_(SH_REV).slice(1).filter(function (r) { return r[0] !== ''; }).map(function (r) { return reviewOut_(r, u.id); }).sort(function (a, b) { return a.d < b.d ? 1 : -1; });
+  return { me: u, op: isOp_(opToken), reviews: reviews, kinds: LIB_KINDS_, items: items, notices: notices, events: events, book: book, ms: ms, members: members, meet: meetState_(), chat: chatTail_(0), today: today_() };
 }
 function roomUpload_(token, it, name, mime, data) {
   const u = member_(token); it = it || {};
   const t = clean_(it.t, 60); if (!t) throw new Error('자료 이름을 적어 주세요.');
   const scope = scopeOf_(it.scope), mem = scope !== '누구나', ty = LIB_KINDS_.indexOf(it.ty) !== -1 ? it.ty : '기타';
   if (scope === '운영진' && !isOp_(token)) throw new Error('운영진만 보는 자료는 운영진만 올릴 수 있어요.');
-  const link = cleanUrl_(it.link);
-  if (String(it.link || '').trim() && !link) throw new Error('링크는 https:// 로 시작하는 주소로 적어 주세요.');
+  const link = links_(it.link);
   let fid = '', fname = '', fm = '';
   if (data) { const f = roomSave_(scope === '운영진' ? 'OPS' : mem ? 'MEM' : 'PUB', name, mime, data); fid = f.getId(); fname = f.getName(); fm = String(mime || ''); }
   else if (!link) throw new Error('파일을 고르거나 링크를 적어 주세요.');
@@ -789,8 +800,7 @@ function roomEdit_(token, id, e, opToken) {
     if (String(x.r[9]) !== u.id) log_(opWho_(opToken), '회원방 자료 지움', String(x.r[1]));
   } else {
     const t = clean_(e.t, 60); if (!t) throw new Error('자료 이름을 적어 주세요.');
-    const link = cleanUrl_(e.link);
-    if (String(e.link || '').trim() && !link) throw new Error('링크는 https:// 로 시작하는 주소로 적어 주세요.');
+    const link = links_(e.link);
     if (!fid && !link) throw new Error('파일이나 링크가 하나는 있어야 해요.');
     const scope = scopeOf_(e.scope), was = scopeOf_(x.r[4]), mem = scope !== '누구나';
     if ((scope === '운영진' || was === '운영진') && scope !== was && !isOp_(opToken || token)) throw new Error('운영진만 보는 자료로 바꾸거나 풀 수 있는 건 운영진뿐이에요.');
@@ -1029,6 +1039,81 @@ function checkFirebase() {
   Logger.log(r && r.getResponseCode() < 300 ? '파이어베이스 대화방 연결이 잘 돼요: ' + sa.client_email : '연결하지 못했어요: ' + (r ? r.getContentText() : '키를 확인해 주세요'));
 }
 
+/* 활동 후기: 운영진이 쓰고 사진을 한 장씩 올려요. 사진은 비공개 폴더에 두고 회원에게만 서버가 보내 줘요 */
+function reviewOut_(r, uid) {
+  const ph = String(r[7] || '').split(',').filter(String), lk = String(r[10] || '').split(',').filter(String);
+  return { id: String(r[0]), t: String(r[1]), d: dstr_(r[2]), p: String(r[3]), n: String(r[4]), who: String(r[5]), body: String(r[6]),
+    photos: ph.length, by: String(r[8]), at: tstr_(r[9]), likes: lk.length, liked: lk.indexOf(uid) !== -1 };
+}
+function opReview_(token, rv) {
+  opNeed_(token); rv = rv || {};
+  const t = clean_(rv.t, 60), d = String(rv.d || '');
+  if (!t || !/^\d{4}-\d{2}-\d{2}$/.test(d)) throw new Error('제목과 날짜를 적어 주세요.');
+  const row = [t, d, clean_(rv.p, 60), clean_(rv.n, 20), clean_(rv.who, 120), longText_(rv.body, 4000)];
+  const sh = sheet_(SH_REV);
+  sh.getRange('C:C').setNumberFormat('@');
+  if (rv.id) {
+    const x = findRow_(SH_REV, rv.id); if (!x) throw new Error('후기를 찾지 못했어요.');
+    sh.getRange(x.row, 2, 1, 6).setValues([row]);
+    log_(opWho_(token), '활동 후기 고침', t);
+    return { id: String(rv.id) };
+  }
+  const id = rid_();
+  sh.appendRow([id].concat(row, ['', opWho_(token), now_(), '']));
+  log_(opWho_(token), '활동 후기 올림', t);
+  return { id: id };
+}
+function opReviewPhoto_(token, id, data) {
+  opNeed_(token);
+  const x = findRow_(SH_REV, id); if (!x) throw new Error('후기를 찾지 못했어요.');
+  const bytes = Utilities.base64Decode(String(data || ''));
+  if (!bytes.length || bytes.length > 5 * 1024 * 1024) throw new Error('사진을 올리지 못했어요.');
+  let f;
+  try { f = subFolder_('F_REV', '회원방 - 활동 후기 사진').createFile(Utilities.newBlob(bytes, 'image/jpeg', clean_(x.r[1], 40) + '.jpg')); }
+  catch (e) { throw new Error('드라이브에 저장하지 못했어요. 편집기에서 setup 을 한 번 실행해 주세요.'); }
+  return withLock_(function () {
+    const y = findRow_(SH_REV, id), ph = String(y.r[7] || '').split(',').filter(String);
+    ph.push(f.getId()); sheet_(SH_REV).getRange(y.row, 8).setValue(ph.join(','));
+    return { photos: ph.length };
+  });
+}
+function opReviewPhotoDel_(token, id, idx) {
+  opNeed_(token);
+  const x = findRow_(SH_REV, id); if (!x) return { ok: true };
+  const ph = String(x.r[7] || '').split(',').filter(String), i = Number(idx);
+  if (i >= 0 && i < ph.length) { trash_(ph[i]); ph.splice(i, 1); sheet_(SH_REV).getRange(x.row, 8).setValue(ph.join(',')); }
+  return { photos: ph.length };
+}
+function opReviewDel_(token, id) {
+  opNeed_(token);
+  const x = findRow_(SH_REV, id); if (!x) return { ok: true };
+  String(x.r[7] || '').split(',').filter(String).forEach(trash_);
+  sheet_(SH_REV).deleteRow(x.row);
+  log_(opWho_(token), '활동 후기 지움', String(x.r[1]));
+  return { ok: true };
+}
+function reviewPhoto_(token, id, idx) {
+  member_(token);
+  const x = findRow_(SH_REV, id); if (!x) throw new Error('후기를 찾지 못했어요.');
+  const ph = String(x.r[7] || '').split(',').filter(String), fid = ph[Number(idx)];
+  if (!fid) throw new Error('사진을 찾지 못했어요.');
+  const c = CacheService.getScriptCache(), k = 'RP_' + fid, hit = c.get(k);
+  if (hit) return { mime: 'image/jpeg', b64: hit };
+  const out = fileOut_(fid);
+  try { if (out.b64.length < 95000) c.put(k, out.b64, 21600); } catch (e) {}
+  return out;
+}
+function reviewLike_(token, id) {
+  const u = member_(token);
+  return withLock_(function () {
+    const x = findRow_(SH_REV, id); if (!x) throw new Error('후기를 찾지 못했어요.');
+    const lk = String(x.r[10] || '').split(',').filter(String), i = lk.indexOf(u.id);
+    if (i === -1) lk.push(u.id); else lk.splice(i, 1);
+    sheet_(SH_REV).getRange(x.row, 11).setValue(lk.join(','));
+    return { likes: lk.length, liked: i === -1 };
+  });
+}
+
 const FN_ = {
   signup: signup_, me: meApi_,
   addClass: addClass_, editClass: editClass_,
@@ -1039,7 +1124,8 @@ const FN_ = {
   opMember: opMember_, roomApply: roomApply_, room: room_, roomUpload: roomUpload_, roomEdit: roomEdit_, roomFile: roomFile_,
   roomAttend: roomAttend_, roomComment: roomComment_, roomCommentDel: roomCommentDel_, chatGet: chatGet_, chatSend: chatSend_, chatDel: chatDel_, meetIn: meetIn_,
   msUpload: msUpload_, msDel: msDel_, msFile: msFile_, fbJoin: fbJoin_,
-  opNotice: opNotice_, opNoticeDel: opNoticeDel_, opNoticePin: opNoticePin_, opEvent: opEvent_, opEventDel: opEventDel_, opMeet: opMeet_, opMsReview: opMsReview_, opBookTitle: opBookTitle_
+  opNotice: opNotice_, opNoticeDel: opNoticeDel_, opNoticePin: opNoticePin_, opEvent: opEvent_, opEventDel: opEventDel_, opMeet: opMeet_, opMsReview: opMsReview_, opBookTitle: opBookTitle_,
+  opReview: opReview_, opReviewPhoto: opReviewPhoto_, opReviewPhotoDel: opReviewPhotoDel_, opReviewDel: opReviewDel_, reviewPhoto: reviewPhoto_, reviewLike: reviewLike_
 };
 
 /************ 곡 목록 예시 (처음 한 번) ************/

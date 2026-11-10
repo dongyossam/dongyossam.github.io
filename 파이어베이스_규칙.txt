@@ -10,6 +10,7 @@
 - 자기가 쓴 말만 지울 수 있어요. (운영진 메뉴에 로그인한 상태로 대화방에 들어온 회원은 다른 말도 지울 수 있어요)
 - 한 번에 500자까지 보낼 수 있어요.
 - 1:1 쪽지(dm)는 보낸 사람과 받은 사람만 읽을 수 있어요. 운영진도 볼 수 없어요.
+- '입력하고 있어요' 표시(typing)도 그 대화방에 있는 회원만 볼 수 있어요.
 
 ----------------------------- 여기부터 복사 -----------------------------
 {
@@ -50,6 +51,14 @@
       "$uid": {
         ".read": "auth != null && auth.uid === $uid",
         ".write": "auth != null && auth.uid === $uid"
+      }
+    },
+    "typing": {
+      "$room": {
+        ".read": "auth != null && root.child('members').child(auth.uid).exists() && ($room === 'all' || $room.beginsWith(auth.uid + '__') || $room.endsWith('__' + auth.uid))",
+        "$uid": {
+          ".write": "auth != null && auth.uid === $uid && root.child('members').child(auth.uid).exists() && ($room === 'all' || $room.beginsWith(auth.uid + '__') || $room.endsWith('__' + auth.uid))"
+        }
       }
     },
     "online": {

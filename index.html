@@ -724,6 +724,23 @@ html{overflow-y:scroll;scrollbar-gutter:stable}
 .lib-row .min,.ms-row .min{min-width:0;overflow-wrap:anywhere}
 .lib-row .btns .btn{flex:0 0 auto;min-width:92px;justify-content:center;text-align:center}
 .sheet .btns a.btn{flex:0 0 auto;min-width:92px;text-align:center}
+.lib-row.hl{box-shadow:0 0 0 4px var(--c1)}
+.btn.lnk{max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.typing{min-height:22px;padding:0 14px 4px;font-size:13px;color:var(--muted)}
+.typing .dots{display:inline-flex;gap:3px;margin-left:6px;vertical-align:middle}.typing .dots i{width:5px;height:5px;border-radius:50%;background:var(--muted);animation:tdot 1s infinite}.typing .dots i:nth-child(2){animation-delay:.15s}.typing .dots i:nth-child(3){animation-delay:.3s}
+@keyframes tdot{0%,60%,100%{opacity:.25}30%{opacity:1}}
+.rev-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px}
+.rev-card{padding:0;overflow:hidden;text-align:left;cursor:pointer;font:inherit;color:var(--ink);gap:0}
+.rev-cover{position:relative;display:grid;place-items:center;aspect-ratio:4/3;background:var(--bg)}
+.rev-cover img{width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .3s}.rev-cover img.on{opacity:1}
+.rev-n{position:absolute;right:10px;bottom:10px;background:rgba(18,26,48,.7);color:#fff;font-size:12.5px;border-radius:999px;padding:2px 9px}
+.rev-card .min{display:grid;gap:3px;padding:12px 14px}
+.rev-card b{font-family:var(--display);font-weight:400;font-size:19px}
+.like{font-weight:700;color:var(--muted);font-size:13px}.like.on{color:var(--c0)}
+.rev-gal{position:relative;background:#141B33;border-radius:16px;overflow:hidden;display:grid;place-items:center;min-height:240px}
+.rev-gal img{max-width:100%;max-height:70vh;object-fit:contain;opacity:0;transition:opacity .25s}.rev-gal img.on{opacity:1}
+.gal{position:absolute;top:50%;transform:translateY(-50%);width:48px;height:48px;border-radius:50%;border:0;background:rgba(255,255,255,.85);font-size:30px;line-height:1;cursor:pointer;color:#2B3A55}
+.gal.prev{left:10px}.gal.next{right:10px}.gal:disabled{opacity:.3;cursor:default}
 /* 동요샘 회원방 */
 .room{display:grid;gap:14px}
 .room-head{display:flex;align-items:flex-end;justify-content:space-between;gap:10px;flex-wrap:wrap}
@@ -1463,6 +1480,7 @@ function openSong(id, o) {
       ${stampBtn(id)}
       <button class="btn ghost" data-vote="${id}">${on ? "이달의 노래로 투표함" : "이달의 노래로 투표"}</button>
       <button class="btn ghost" data-karaoke="${id}">노래방 화면</button>
+      <button class="btn ghost" data-songqr="${id}">바로가기 QR</button>
       ${mediaBtn(s, "audio")}${mediaBtn(s, "video")}${mediaBtn(s, "score")}
     </div>
     <h4>우리 반 가사 바꾸기</h4>
@@ -2338,50 +2356,71 @@ function qrPng(q) {
   for (let r = 0; r < n; r++) for (let k = 0; k < n; k++) if (q.isDark(r, k)) x.fillRect(m + k * cell, m + r * cell, cell, cell);
   return c.toDataURL("image/png");
 }
-function qrOpen() {
-  const host = $("#sheetHost");
-  host.innerHTML = `<div class="scrim" data-close></div><div class="sheet" role="dialog" aria-modal="true" aria-label="QR로 들어오기"><div class="in">
+/* 바로가기 QR: 사이트·곡·자료마다. QR 아래에 제목과 '동요샘 노래상자'가 들어간 그림으로 내려받거나 복사해요 */
+let QRCUR = { url: SITE_URL, title: "동요샘 노래상자", sub: "휴대폰으로 찍어서 들어와요" };
+function qrOpen(url, title, sub) {
+  QRCUR = url ? { url, title: title || "동요샘 노래상자", sub: sub || "동요샘 노래상자" } : { url: SITE_URL, title: "동요샘 노래상자", sub: "휴대폰으로 찍어서 들어와요" };
+  const host = $("#sheetHost"), site = !url;
+  host.innerHTML = `<div class="scrim" data-close></div><div class="sheet" role="dialog" aria-modal="true" aria-label="QR"><div class="in">
     <button class="btn ghost close" data-close>닫기</button>
-    <h3>QR로 들어오기</h3>
+    <h3>${site ? "QR로 들어오기" : esc(QRCUR.title)}</h3>
     <div class="qr-box">
-      <p class="meta" style="margin:0">휴대폰 카메라로 찍으면 노래상자로 바로 들어와요. 교실 화면에 크게 띄워 두거나 그림으로 저장해 안내문에 붙여 쓰세요.</p>
+      <p class="meta" style="margin:0">${site ? "휴대폰 카메라로 찍으면 노래상자로 바로 들어와요. 교실 화면에 크게 띄워 두거나 그림으로 저장해 안내문에 붙여 쓰세요." : "휴대폰 카메라로 찍으면 바로 열려요. 교실 화면에 띄우거나 그림으로 저장해 안내문·가정 통신문에 붙여 쓰세요."}</p>
       <div class="qr-img" id="qrImg"><span class="meta">QR을 만들고 있어요…</span></div>
-      <span class="qr-url">${esc(SITE_URL)}</span>
+      <span class="qr-url">${esc(QRCUR.url)}</span>
       <div class="qr-acts">
         <button class="btn" data-qr="full">크게 띄우기</button>
-        <button class="btn ghost" data-qr="copy">주소 복사</button>
-        <button class="btn ghost" data-qr="save">QR 그림 저장</button>
+        <button class="btn ghost" data-qr="copy">링크 복사</button>
+        <button class="btn ghost" data-qr="copyimg">QR 그림 복사</button>
+        <button class="btn ghost" data-qr="save">QR 내려받기</button>
       </div>
     </div>
   </div></div>`;
-  loadQR().then(() => { const b = $("#qrImg"); if (b) b.innerHTML = qrSvg(qrMake(SITE_URL)); })
+  loadQR().then(() => { const b = $("#qrImg"); if (b) b.innerHTML = qrSvg(qrMake(QRCUR.url)); })
     .catch(() => { const b = $("#qrImg"); if (b) b.innerHTML = `<span class="meta">인터넷 연결을 확인하고 다시 열어 주세요.</span>`; });
+}
+function qrCard(q, title, sub) {
+  const n = q.getModuleCount(), cell = 14, m = 3 * cell, qs = n * cell, W = Math.max(qs + m * 2, 640), H = qs + m * 2 + 150, c = document.createElement("canvas");
+  c.width = W; c.height = H; const x = c.getContext("2d"); x.fillStyle = "#fff"; x.fillRect(0, 0, W, H);
+  const ox = (W - qs) / 2; x.fillStyle = "#1d2533";
+  for (let r = 0; r < n; r++) for (let k = 0; k < n; k++) if (q.isDark(r, k)) x.fillRect(ox + k * cell, m + r * cell, cell, cell);
+  x.textAlign = "center"; x.fillStyle = "#2B3A55"; x.font = '400 40px "Jua","Noto Sans KR",sans-serif';
+  let t = title; while (x.measureText(t).width > W - 60 && t.length > 4) t = t.slice(0, -2) + "…";
+  x.fillText(t, W / 2, qs + m + 70); x.font = '500 26px "Noto Sans KR",sans-serif'; x.fillStyle = "#61708A"; x.fillText(sub, W / 2, qs + m + 118);
+  return c;
 }
 function qrFull() {
   if (!window.qrcode) return;
   const d = document.createElement("div"); d.className = "qr-full"; d.setAttribute("role", "dialog"); d.setAttribute("aria-label", "QR 크게 보기");
-  d.innerHTML = `<div class="qr-big">${qrSvg(qrMake(SITE_URL), 1)}</div><b>휴대폰으로 찍어서 들어와요</b><small>동요샘 노래상자 · 화면을 누르면 닫혀요</small>`;
+  d.innerHTML = `<div class="qr-big">${qrSvg(qrMake(QRCUR.url), 1)}</div><b>${esc(QRCUR.title === "동요샘 노래상자" ? "휴대폰으로 찍어서 들어와요" : QRCUR.title)}</b><small>${esc(QRCUR.sub)} · 화면을 누르면 닫혀요</small>`;
   const close = () => { d.remove(); document.removeEventListener("keydown", esc_); if (document.fullscreenElement) document.exitFullscreen().catch(() => {}); };
   const esc_ = e => { if (e.key === "Escape") close(); };
   d.addEventListener("click", close); document.addEventListener("keydown", esc_);
   document.body.appendChild(d);
   if (d.requestFullscreen) d.requestFullscreen().catch(() => {});
 }
+function copyText(v, msg) {
+  (navigator.clipboard ? navigator.clipboard.writeText(v) : Promise.reject()).then(() => toast(msg)).catch(() => {
+    const t = document.createElement("textarea"); t.value = v; document.body.appendChild(t); t.select();
+    try { document.execCommand("copy"); toast(msg); } catch (er) { toast("주소: " + v); } t.remove();
+  });
+}
 document.addEventListener("click", e => {
   if (e.target.closest("#qrOpen")) { e.stopPropagation(); qrOpen(); return; }
+  const sq = e.target.closest("[data-songqr]");
+  if (sq) { e.stopPropagation(); const s = songById(+sq.dataset.songqr); if (s) qrOpen(SITE_URL + "?song=" + s.id, s.title, "동요샘 노래상자 · " + creditLine(s).slice(0, 30)); return; }
   const a = e.target.closest("[data-qr]"); if (!a) return;
   e.stopPropagation();
-  const k = a.dataset.qr;
+  const k = a.dataset.qr, fname = (QRCUR.title || "동요샘").replace(/[\\/:*?"<>|\s]+/g, "_") + "_QR.png";
   if (k === "full") qrFull();
-  else if (k === "copy") {
-    const done = () => toast("주소를 복사했어요. 카카오톡이나 알림장에 붙여 넣으세요");
-    (navigator.clipboard ? navigator.clipboard.writeText(SITE_URL) : Promise.reject()).then(done).catch(() => {
-      const t = document.createElement("textarea"); t.value = SITE_URL; document.body.appendChild(t); t.select();
-      try { document.execCommand("copy"); done(); } catch (er) { toast("주소: " + SITE_URL); } t.remove();
-    });
+  else if (k === "copy") copyText(QRCUR.url, "링크를 복사했어요. 카카오톡이나 알림장에 붙여 넣으세요");
+  else if (k === "copyimg" && window.qrcode) {
+    const c = qrCard(qrMake(QRCUR.url), QRCUR.title, QRCUR.sub);
+    if (!navigator.clipboard || !window.ClipboardItem) { toast("이 브라우저는 그림 복사를 못 해요. QR 내려받기를 눌러 주세요"); return; }
+    c.toBlob(bl => navigator.clipboard.write([new ClipboardItem({ "image/png": bl })]).then(() => toast("QR 그림을 복사했어요. 한글·카톡에 붙여 넣으세요"), () => toast("그림을 복사하지 못했어요. QR 내려받기를 눌러 주세요")), "image/png");
   } else if (k === "save" && window.qrcode) {
-    const l = document.createElement("a"); l.href = qrPng(qrMake(SITE_URL)); l.download = "동요샘_노래상자_QR.png"; document.body.appendChild(l); l.click(); l.remove();
-    toast("QR 그림을 저장했어요");
+    const l = document.createElement("a"); l.href = qrCard(qrMake(QRCUR.url), QRCUR.title, QRCUR.sub).toDataURL("image/png"); l.download = fname; document.body.appendChild(l); l.click(); l.remove();
+    toast("QR 그림을 내려받았어요");
   }
 }, true);
 if (/[?&]qr=1\b/.test(location.search)) setTimeout(qrOpen, 300);
@@ -2389,7 +2428,7 @@ if (/[?&]qr=1\b/.test(location.search)) setTimeout(qrOpen, 300);
 /* ---------- 동요샘 회원방 (자료방 · 일정 · 공지 · 곡집 원고 · 대화방 · 화상 회의) ---------- */
 // '회원만' 자료는 서버가 회원에게만 보내요. 회원이 아니면 목록에도 나오지 않아요.
 const ROOM = { sub: store.get("dys-room-sub", "lib"), data: null, pub: null, loading: false, err: "", kind: "", q: "", chat: [], online: [], onlineMap: {}, members: {}, inbox: {}, dmSeen: {}, dm: "", dmMsgs: [], dmRef: null, polling: 0, lastNo: 0, seen: store.get("dys-chat-seen", 0), bookSel: null, msMine: false };
-const ROOM_SUBS = [["lib", "자료방"], ["cal", "일정"], ["notice", "공지"], ["book", "곡집 원고"], ["chat", "대화방"], ["meet", "화상 회의"]];
+const ROOM_SUBS = [["lib", "자료방"], ["cal", "일정"], ["notice", "공지"], ["book", "곡집 원고"], ["chat", "대화방"], ["review", "활동 후기"], ["meet", "화상 회의"]];
 const DEMO_LIB = [
   { id: "d1", t: "예시: 발표회 합창 연습 순서표", d: "체험 모드 예시 자료예요.", ty: "공연·발표회", m: false, by: "예시 회원 A", at: "2026-10-02", link: "https://cafe.daum.net/jbdongyo" },
   { id: "d2", t: "예시: 우리 반 무지개 수업 활동지", d: "가사 바꾸기 활동지 (체험 모드 예시)", ty: "수업 자료", m: false, by: "예시 회원 D", at: "2026-09-21", link: "https://cafe.daum.net/jbdongyo" }
@@ -2465,10 +2504,12 @@ function renderRoom(v) {
   else if (APP.live && (member ? !ROOM.data : !ROOM.pub)) body = `<div class="booting" role="status"><b>회원방을 여는 중이에요</b></div>`;
   else if (ROOM.sub === "lib") body = libView(member);
   else if (!member) body = roomGate();
-  else body = ROOM.sub === "cal" ? calView() : ROOM.sub === "notice" ? noticeView() : ROOM.sub === "book" ? bookView() : ROOM.sub === "chat" ? chatView() : meetView();
+  else body = ROOM.sub === "cal" ? calView() : ROOM.sub === "notice" ? noticeView() : ROOM.sub === "book" ? bookView() : ROOM.sub === "chat" ? chatView() : ROOM.sub === "review" ? reviewView() : meetView();
   v.innerHTML = `<section class="room" data-roomzone>${head}${roomTabs()}${body}</section>`;
+  if (APP.q.i && ROOM.sub === "lib" && (ROOM.data || ROOM.pub)) { const id = APP.q.i, el = document.getElementById("lib_" + id); ROOM.hl = id; delete APP.q.i;
+    if (el) { el.classList.add("hl"); setTimeout(() => el.scrollIntoView({ block: "center", behavior: "smooth" }), 200); } else toast(isMember() ? "자료를 찾지 못했어요. 지워졌을 수 있어요" : "회원만 보는 자료일 수 있어요. 동요샘 회원으로 로그인해 주세요"); }
   if (member && ROOM.data) fbStart().then(on => { if (on && ROOM.sub !== "chat") { const tb = document.querySelector(".room-tabs"); if (tb) tb.outerHTML = roomTabs(); } });
-  if (ROOM.sub === "chat" && member) { chatStart(); chatScroll(); ROOM.seen = ROOM.lastNo; store.set("dys-chat-seen", ROOM.seen); }
+  if (ROOM.sub === "chat" && member) { chatStart(); if (FB.on) typingWatch(); chatScroll(); ROOM.seen = ROOM.lastNo; store.set("dys-chat-seen", ROOM.seen); }
 }
 
 /* 자료방 */
@@ -2488,11 +2529,12 @@ function libView(member) {
 function libRow(i) {
   const c = KIND_COLOR[i.ty] != null ? KIND_COLOR[i.ty] : 3;
   const open = i.hasFile ? (i.m ? `<button class="btn ghost" data-libget="${esc(i.id)}">열기</button>` : `<a class="btn ghost" href="${esc(i.url)}" target="_blank" rel="noopener">열기</a>`) : "";
-  const link = i.link ? `<a class="btn ghost" href="${esc(i.link)}" target="_blank" rel="noopener">링크</a>` : "";
+  const ls = linksOf(i.link), link = ls.map((l, k) => `<a class="btn ghost lnk" href="${esc(l.url)}" target="_blank" rel="noopener" title="${esc(l.url)}">${esc(l.label || (ls.length > 1 ? "링크 " + (k + 1) : "링크"))}</a>`).join("");
+  const qr = `<button class="more" data-libqr="${esc(i.id)}">QR</button>`;
   const edit = (i.mine || roomOp()) && isMember() ? `<button class="more" data-libedit="${esc(i.id)}">고치기</button>` : "";
-  return `<div class="card lib-row" style="--c:var(--c${c});--cs:var(--c${c}-soft)"><span class="kind">${esc(i.ty)}</span>
+  return `<div class="card lib-row${ROOM.hl === i.id ? " hl" : ""}" id="lib_${esc(i.id)}" style="--c:var(--c${c});--cs:var(--c${c}-soft)"><span class="kind">${esc(i.ty)}</span>
     <div class="min"><b>${esc(i.t)}</b>${i.op ? ` <span class="memb big">운영진만</span>` : i.m ? ` <span class="memb">회원만</span>` : ""}${i.d ? `<p class="meta pre">${esc(i.d)}</p>` : ""}<small class="meta">${esc(i.by)} · ${fmtAt(i.at)}${i.fname ? " · " + esc(i.fname) : ""}${i.n ? ` · ${i.n}번 받음` : ""}</small></div>
-    <div class="btns">${open}${link}${edit}</div></div>`;
+    <div class="btns">${open}${link}${qr}${edit}</div></div>`;
 }
 function libForm(it) {
   const kinds = ROOM.data.kinds, e = it || { t: "", d: "", ty: "악보", m: true, link: "" };
@@ -2504,13 +2546,13 @@ function libForm(it) {
     <p class="meta" style="margin:0">앨범 가사·악보·음원처럼 밖으로 나가면 안 되는 자료는 꼭 <b>회원만</b>으로 올려 주세요. 회원이 아니면 목록에도 보이지 않아요.${roomOp() ? " 운영진 회의 자료처럼 운영진끼리만 볼 자료는 <b>운영진만</b>으로 올려요. 다른 회원에게는 목록에도 보이지 않아요." : ""}</p>
     <label class="fld"><span class="label">설명 (고르기)</span><textarea id="lbD" rows="3" maxlength="500" placeholder="어떤 자료인지, 어디에 쓰면 좋은지">${esc(e.d)}</textarea></label>
     ${it ? (it.hasFile ? `<p class="meta" style="margin:0">올린 파일: ${esc(it.fname)}</p>` : "") : `<label class="fld"><span class="label">파일 (20MB까지)</span><input type="file" id="lbF"></label>`}
-    <label class="fld"><span class="label">링크 (파일 대신 또는 함께, 고르기)</span><input type="url" id="lbL" value="${esc(e.link)}" placeholder="https://"></label>
+    <label class="fld"><span class="label">링크 (파일 대신 또는 함께, 고르기 · 줄마다 하나씩, 설명을 붙이려면 '설명 | 주소')</span><textarea id="lbL" rows="3" placeholder="유튜브 영상 | https://youtu.be/...&#10;반주 MR | https://drive.google.com/...&#10;https://...">${esc(e.link)}</textarea></label>
     <div class="btns"><button class="btn" data-libsave="${it ? esc(it.id) : ""}">${it ? "고친 내용 저장" : "올리기"}</button>${it ? `<button class="btn ghost danger" data-libdel="${esc(it.id)}">자료 지우기</button>` : ""}</div>
   </div></div>`;
 }
 async function libSave(id) {
   const v = s => (($(s) || {}).value || "").trim();
-  const it = { t: v("#lbT"), ty: v("#lbTy"), d: ($("#lbD") || {}).value || "", link: v("#lbL"), scope: (document.querySelector("input[name=lbS]:checked") || {}).value || "회원" };
+  const it = { t: v("#lbT"), ty: v("#lbTy"), d: ($("#lbD") || {}).value || "", link: ($("#lbL") || {}).value || "", scope: (document.querySelector("input[name=lbS]:checked") || {}).value || "회원" };
   if (!it.t) { toast("자료 이름을 적어 주세요"); return; }
   if (id) { roomDo("roomEdit", [roomTok(), id, it, OP.token || ""], "고친 내용을 저장했어요"); return; }
   const f = ($("#lbF") || {}).files && $("#lbF").files[0];
@@ -2533,6 +2575,13 @@ async function libGet(id) {
       <div class="btns"><a class="btn" href="${url}" download="${esc(r.name)}">내려받기</a>${/pdf/.test(r.mime) ? `<a class="btn ghost" href="${url}" target="_blank" rel="noopener">새 창에서 보기</a>` : ""}</div>
       <p class="meta" style="margin:0">회원·운영진만 받는 자료예요. 밖으로 퍼지지 않게 함께 지켜 주세요.</p></div></div>`;
   } catch (e) { toast(e.message); } finally { roomBusy(false); }
+}
+
+/* 링크 여러 개: 줄마다 '설명 | 주소' */
+function linksOf(v) { return String(v || "").split("\n").map(x => x.trim()).filter(Boolean).map(ln => { const i = ln.lastIndexOf("|"); return i >= 0 ? { label: ln.slice(0, i).trim(), url: ln.slice(i + 1).trim() } : { label: "", url: ln }; }).filter(l => /^https?:\/\//.test(l.url)); }
+function libQr(id) {
+  const all = (ROOM.data ? ROOM.data.items : (ROOM.pub && ROOM.pub.items) || []), it = all.find(x => x.id === id); if (!it) return;
+  qrOpen(SITE_URL + "?tab=room&i=" + encodeURIComponent(id), it.t, "동요샘 회원방 자료" + (it.op ? " (운영진만)" : it.m ? " (회원만)" : ""));
 }
 
 /* 일정 */
@@ -2697,7 +2746,7 @@ function chatNorm(m) { return { k: String(m.no), no: m.no, n: m.n, x: m.x, at: m
 function fbNorm(key, v) { const d = new Date(v.t || Date.now()); return { k: key, no: v.t || 0, n: v.n, x: v.x, at: localDay(d) + " " + String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"), mine: v.u === FB.uid, fb: true }; }
 async function fbStart() {
   if (FB.on) return true;
-  if (!APP.auth || !memberAcc() || !NATCFG.firebase || !NATCFG.firebase.databaseURL) return false;
+  if (!APP.auth || !(memberAcc() || (APP.acc && APP.acc.op)) || !NATCFG.firebase || !NATCFG.firebase.databaseURL) return false;
   if (FB.starting) return FB.starting;
   FB.starting = (async () => {
     try {
@@ -2715,7 +2764,7 @@ async function fbStart() {
       FB.db.ref("members").on("value", s => { ROOM.members = s.val() || {}; chatPaint(); }, () => {});
       FB.db.ref("inbox/" + FB.uid).on("value", s => { ROOM.inbox = s.val() || {}; chatPaint(); }, () => {});
       FB.db.ref("seen/" + FB.uid).on("value", s => { ROOM.dmSeen = s.val() || {}; chatPaint(); }, () => {});
-      FB.on = true; return true;
+      FB.on = true; if (tab === "room" && ROOM.sub === "chat") typingWatch(); return true;
     } catch (e) { console.warn("파이어베이스 대화방 연결 실패, 시트 대화방으로 씀", e); return false; }
     finally { FB.starting = null; }
   })();
@@ -2744,6 +2793,7 @@ const dmUnread = uid => { const i = ROOM.inbox[uid]; return !!(i && i.t > (ROOM.
 function dmUnreadCount() { return FB.on ? Object.keys(ROOM.inbox || {}).filter(u => u !== ROOM.dm && dmUnread(u)).length : 0; }
 function dmName(uid) { const m = ROOM.members[uid] || ROOM.onlineMap[uid] || (ROOM.inbox[uid] || {}); return m.n || "회원"; }
 function dmOpen(uid) {
+  typingPing(true);
   if (ROOM.dmRef) { ROOM.dmRef.off(); ROOM.dmRef = null; }
   ROOM.dm = uid || ""; ROOM.dmMsgs = [];
   if (uid && FB.on) {
@@ -2759,7 +2809,7 @@ function chatView() {
   const dm = ROOM.dm;
   return `<div class="chat-wrap"><div class="card chat">
       <div class="chat-head">${dm ? `<button class="more" data-dmopen="">← 전체 대화방</button><b>${esc(dmName(dm))} 선생님과 쪽지</b>${ROOM.onlineMap[dm] ? `<span class="dot on" title="접속 중"></span>` : `<span class="meta">지금은 접속해 있지 않아요. 다음에 들어오면 볼 수 있어요</span>`}` : `<b>전체 대화방</b><span class="meta">회원 모두가 함께 봐요</span>`}</div>
-      <div class="chat-log" id="chatLog">${chatLines()}</div>
+      <div class="chat-log" id="chatLog">${chatLines()}</div><div class="typing" id="chatTyping" aria-live="polite">${typingText()}</div>
       <div class="chat-new"><textarea id="chatX" rows="1" maxlength="${dm ? 1000 : 500}" placeholder="${dm ? esc(dmName(dm)) + " 선생님께 보내는 쪽지" : "회원 모두에게 보내는 말"}" aria-label="보낼 말"></textarea><button class="btn" data-chatsend>보내기</button></div></div>
     <aside class="card chat-side"><button class="room-entry${dm ? "" : " on"}" data-dmopen=""><b>전체 대화방</b><small>회원 모두가 함께</small></button>
       <span class="eyebrow">${FB.on ? "회원에게 쪽지 보내기" : "회원"}</span><div id="chatWho">${chatWho()}</div>
@@ -2780,9 +2830,29 @@ function chatPaint() {
   if (atEnd) chatScroll(); ROOM.seen = ROOM.lastNo; store.set("dys-chat-seen", ROOM.seen);
 }
 function chatScroll() { const log = $("#chatLog"); if (log) log.scrollTop = log.scrollHeight; }
+/* 입력하고 있어요: typing/{방}/{uid}, 4초 동안 안 치면 사라져요 */
+const TYP = { ref: null, room: "", others: {}, last: 0, timer: 0, off: 0 };
+const typRoom = () => ROOM.dm ? dmKey(ROOM.dm) : "all";
+function typingText() { const now = Date.now() + TYP.off, list = Object.entries(TYP.others).filter(([u, v]) => u !== FB.uid && v && now - v.t < 5000).map(([, v]) => v.n); return list.length ? esc(list.slice(0, 3).map(n => /계정$/.test(n) ? n + "이" : n + " 선생님이").join(", ")) + " 입력하고 있어요" + "<span class='dots'><i></i><i></i><i></i></span>" : ""; }
+function typingWatch() {
+  if (!FB.on) return; const room = typRoom();
+  if (TYP.room === room && TYP.ref) return;
+  if (TYP.ref) TYP.ref.off(); TYP.room = room; TYP.others = {};
+  TYP.ref = FB.db.ref("typing/" + room); TYP.ref.on("value", sn => { TYP.others = sn.val() || {}; const el = $("#chatTyping"); if (el) el.innerHTML = typingText(); }, () => {});
+  if (!TYP.offRef) { TYP.offRef = FB.db.ref(".info/serverTimeOffset"); TYP.offRef.on("value", sn => { TYP.off = sn.val() || 0; }); }
+}
+function typingPing(stop) {
+  if (!FB.on) return; const ref = FB.db.ref("typing/" + typRoom() + "/" + FB.uid);
+  clearTimeout(TYP.timer);
+  if (stop) { ref.remove().catch(() => {}); TYP.last = 0; return; }
+  if (Date.now() - TYP.last > 1500) { TYP.last = Date.now(); ref.onDisconnect().remove(); ref.set({ n: myName(), t: firebase.database.ServerValue.TIMESTAMP }).catch(() => {}); }
+  TYP.timer = setTimeout(() => typingPing(true), 4000);
+}
+setInterval(() => { const el = $("#chatTyping"); if (el && tab === "room" && ROOM.sub === "chat") el.innerHTML = typingText(); }, 1500);
+document.addEventListener("input", e => { if (e.target.id === "chatX" && e.target.value.trim()) typingPing(); });
 async function chatSend() {
   const box = $("#chatX"), x = box ? box.value.trim() : "";
-  if (!x) return; box.value = "";
+  if (!x) return; box.value = ""; typingPing(true);
   try {
     if (FB.on && ROOM.dm) {
       const TS = firebase.database.ServerValue.TIMESTAMP;
@@ -2833,6 +2903,7 @@ document.addEventListener("click", e => {
   if (d.libsave !== undefined) { libSave(d.libsave); return; }
   if (d.libdel) { if (confirmTwice(t, "한 번 더 누르면 지워요")) roomDo("roomEdit", [roomTok(), d.libdel, { hide: true }, OP.token || ""], "자료를 지웠어요"); return; }
   if (d.libget) { libGet(d.libget); return; }
+  if (d.libqr) { libQr(d.libqr); return; }
   if (d.attend) { roomDo("roomAttend", [roomTok(), d.attend], "", r => toast(r.on ? "참석으로 표시했어요" : "참석 표시를 풀었어요")); return; }
   if (t.hasAttribute("data-evadd")) { const v = s => ($(s) || {}).value || ""; roomDo("opEvent", [OP.token, { d: v("#evD"), tm: v("#evTm"), t: v("#evT").trim(), p: v("#evP").trim(), big: $("#evBig").checked }], "일정을 올렸어요"); return; }
   if (d.calmove !== undefined) { const td = (ROOM.data && ROOM.data.today) || localDay(), cur = ROOM.calM || td.slice(0, 7); ROOM.calM = d.calmove === "0" ? td.slice(0, 7) : monthAdd(cur, +d.calmove); render(); return; }
@@ -2854,7 +2925,7 @@ document.addEventListener("click", e => {
   if (t.hasAttribute("data-bkmake")) { bookMake(); return; }
   if (d.dmopen !== undefined) { dmOpen(d.dmopen); return; }
   if (t.hasAttribute("data-chatsend")) { chatSend(); return; }
-  if (d.chatdel) { chatDel(d.chatdel); return; }
+  if (d.chatdel) { if (confirmTwice(t, "한 번 더 누르면 지워요")) chatDel(d.chatdel); return; }
   if (t.hasAttribute("data-meetgo")) { const u = ROOM.data.meet.url; window.open(u, "_blank", "noopener"); rpc("meetIn", [roomTok(), true]).then(m => { ROOM.data.meet = m; if (tab === "room") render(); }).catch(() => {}); return; }
   if (t.hasAttribute("data-meetout")) { rpc("meetIn", [roomTok(), false]).then(m => { ROOM.data.meet = m; render(); toast("회의에서 나왔다고 표시했어요"); }).catch(er => toast(er.message)); return; }
   if (t.hasAttribute("data-meetre")) { roomDo("chatGet", [roomTok(), 0]); return; }
@@ -2872,6 +2943,97 @@ document.addEventListener("click", e => {
   toast(`${Number(c.dataset.calday.slice(5, 7))}월 ${Number(c.dataset.calday.slice(8, 10))}일 일정을 적어 주세요`);
 });
 
+/* 활동 후기: 운영진이 발표회·모임 후기를 쓰고 사진을 올려요. 사진은 회원에게만 보여요 */
+const REVPH = {};
+function revPhoto(id, idx) {
+  const k = id + ":" + idx;
+  if (REVPH[k]) return REVPH[k];
+  REVPH[k] = rpc("reviewPhoto", [roomTok(), id, idx]).then(r => URL.createObjectURL(new Blob([b64ToBytes(r.b64)], { type: r.mime || "image/jpeg" }))).catch(e => { delete REVPH[k]; throw e; });
+  return REVPH[k];
+}
+function revFill(root) {
+  (root || document).querySelectorAll("img[data-revph]").forEach(img => { if (img.dataset.done) return; img.dataset.done = "1"; const [id, i] = img.dataset.revph.split(":");
+    revPhoto(id, +i).then(u => { img.src = u; img.classList.add("on"); }).catch(() => { img.alt = "사진을 불러오지 못했어요"; }); });
+}
+function reviewView() {
+  const list = ROOM.data.reviews || [];
+  setTimeout(() => revFill($(".rev-list")), 0);
+  return `${roomOp() ? `<div class="card"><span class="eyebrow">활동 후기 (운영진)</span><p class="meta" style="margin:0">발표회·모임·연수가 끝나면 후기와 사진을 남겨요. 사진은 몇 장이든 올릴 수 있고, 회원에게만 보여요.</p><div class="btns"><button class="btn" data-revnew>후기 올리기</button></div></div>` : ""}
+    <div class="rev-list">${list.map(r => `<button class="card rev-card" data-revopen="${esc(r.id)}">
+      <span class="rev-cover">${r.photos ? `<img data-revph="${esc(r.id)}:0" alt="${esc(r.t)} 사진">` : `<span class="meta">사진 없음</span>`}${r.photos > 1 ? `<span class="rev-n">${r.photos}장</span>` : ""}</span>
+      <span class="min"><b>${esc(r.t)}</b><small class="meta">${Number(r.d.slice(5, 7))}월 ${Number(r.d.slice(8, 10))}일${r.p ? " · " + esc(r.p) : ""}${r.n ? " · " + esc(r.n) + "명" : ""}</small>
+      ${r.who ? `<small class="meta">나눔 ${esc(r.who)}</small>` : ""}<small class="like${r.liked ? " on" : ""}">공감 ${r.likes}</small></span></button>`).join("") || `<div class="empty">아직 올라온 활동 후기가 없어요.</div>`}</div>`;
+}
+function reviewSheet(id, at) {
+  const r = (ROOM.data.reviews || []).find(x => x.id === id); if (!r) return;
+  const i = Math.max(0, Math.min(at || 0, r.photos - 1));
+  $("#sheetHost").innerHTML = `<div class="scrim" data-close></div><div class="sheet" role="dialog" aria-modal="true" aria-label="${esc(r.t)}" data-roomzone><div class="in">
+    <button class="btn ghost close" data-close>닫기</button>
+    <span class="eyebrow">활동 후기 · ${Number(r.d.slice(5, 7))}월 ${Number(r.d.slice(8, 10))}일</span><h3>${esc(r.t)}</h3>
+    ${r.photos ? `<div class="rev-gal"><img data-revph="${esc(r.id)}:${i}" alt="${esc(r.t)} 사진 ${i + 1}">
+      ${r.photos > 1 ? `<button class="gal prev" data-revgo="${i - 1}" aria-label="앞 사진"${i === 0 ? " disabled" : ""}>‹</button><button class="gal next" data-revgo="${i + 1}" aria-label="다음 사진"${i >= r.photos - 1 ? " disabled" : ""}>›</button>` : ""}
+      <span class="rev-n">${i + 1} / ${r.photos}</span></div>
+      ${roomOp() ? `<div class="btns"><button class="more" data-revphdel="${i}">이 사진 빼기</button></div>` : ""}` : ""}
+    <div class="evinfo">${r.p ? `<span class="label">장소</span><span>${esc(r.p)}</span>` : ""}${r.n ? `<span class="label">참석 인원</span><span>${esc(r.n)}명</span>` : ""}${r.who ? `<span class="label">나눔 선생님</span><span>${esc(r.who)}</span>` : ""}</div>
+    ${r.body ? `<p class="pre" style="margin:0">${esc(r.body)}</p>` : ""}
+    <div class="btns"><button class="btn${r.liked ? "" : " ghost"}" data-revlike="${esc(r.id)}">${r.liked ? "공감했어요" : "공감하기"} ${r.likes}</button>
+      ${roomOp() ? `<button class="btn ghost" data-revedit="${esc(r.id)}">고치기 · 사진 더 올리기</button><button class="btn ghost danger" data-revdel="${esc(r.id)}">후기 지우기</button>` : ""}</div>
+    <span class="meta">${esc(r.by)} · ${fmtAt(r.at)}</span></div></div>`;
+  $(".sheet").dataset.rev = id; $(".sheet").dataset.at = i;
+  revFill($(".sheet"));
+  if (r.photos > i + 1) revPhoto(id, i + 1).catch(() => {});
+}
+function reviewForm(id) {
+  const r = id ? (ROOM.data.reviews || []).find(x => x.id === id) : { t: "", d: (ROOM.data.today || localDay()), p: "", n: "", who: "", body: "", photos: 0 };
+  $("#sheetHost").innerHTML = `<div class="scrim" data-close></div><div class="sheet" role="dialog" aria-modal="true" aria-label="활동 후기" data-roomzone><div class="in">
+    <button class="btn ghost close" data-close>닫기</button><h3>${id ? "후기 고치기" : "후기 올리기"}</h3>
+    <label class="fld"><span class="label">제목</span><input type="text" id="rvT" maxlength="60" value="${esc(r.t)}" placeholder="예: 제4회 창작동요 발표회"></label>
+    <div class="form2"><label class="fld"><span class="label">날짜</span><input type="date" id="rvD" value="${esc(r.d)}"></label><label class="fld"><span class="label">장소</span><input type="text" id="rvP" maxlength="60" value="${esc(r.p)}"></label></div>
+    <div class="form2"><label class="fld"><span class="label">참석 인원</span><input type="text" id="rvN" maxlength="20" inputmode="numeric" value="${esc(r.n)}" placeholder="예: 24"></label><label class="fld"><span class="label">나눔 선생님</span><input type="text" id="rvW" maxlength="120" value="${esc(r.who)}" placeholder="예: 김햇살, 박바람"></label></div>
+    <label class="fld"><span class="label">진행 내용</span><textarea id="rvB" rows="6" maxlength="4000">${esc(r.body)}</textarea></label>
+    <label class="fld"><span class="label">사진 ${id ? `더 올리기 (지금 ${r.photos}장)` : "올리기"} · 여러 장 한꺼번에 고를 수 있어요</span><input type="file" id="rvF" accept="image/*" multiple></label>
+    <p class="meta" style="margin:0">사진은 올릴 때 긴 쪽 1280px로 줄여서 한 장씩 저장해요. 아이들 얼굴이 나온 사진은 학교 동의를 받은 것만 올려 주세요.</p>
+    <div class="btns"><button class="btn" data-revsave="${id ? esc(id) : ""}">${id ? "고친 내용 저장" : "올리기"}</button></div></div></div>`;
+}
+function shrinkPhoto(file) {
+  return new Promise((ok, no) => { const url = URL.createObjectURL(file), img = new Image();
+    img.onload = () => { const k = Math.min(1, 1280 / Math.max(img.width, img.height)), c = document.createElement("canvas"); c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+      c.getContext("2d").drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(url); ok(c.toDataURL("image/jpeg", 0.85).split(",")[1]); };
+    img.onerror = () => { URL.revokeObjectURL(url); no(new Error(file.name + " 사진을 읽지 못했어요")); }; img.src = url; });
+}
+async function reviewSave(id) {
+  const v = s => (($(s) || {}).value || "");
+  const rv = { id: id || "", t: v("#rvT").trim(), d: v("#rvD"), p: v("#rvP").trim(), n: v("#rvN").trim(), who: v("#rvW").trim(), body: v("#rvB") };
+  if (!rv.t || !rv.d) { toast("제목과 날짜를 적어 주세요"); return; }
+  const files = [...(($("#rvF") || {}).files || [])];
+  if (APP.busy) return; roomBusy(true);
+  const btn = document.querySelector("[data-revsave]");
+  try {
+    const r = await rpc("opReview", [OP.token, rv]); let ok = 0;
+    for (let k = 0; k < files.length; k++) {
+      if (btn) btn.textContent = `사진 올리는 중 ${k + 1}/${files.length}`;
+      try { await rpc("opReviewPhoto", [OP.token, r.id, await shrinkPhoto(files[k])]); ok++; } catch (e) { toast(e.message); }
+    }
+    Object.keys(REVPH).filter(k => k.startsWith(r.id + ":")).forEach(k => delete REVPH[k]);
+    roomBusy(false); await roomLoad(true); $("#sheetHost").innerHTML = ""; render();
+    toast(files.length ? `후기를 저장했어요 (사진 ${ok}장)` : "후기를 저장했어요");
+  } catch (e) { toast(e.message); roomBusy(false); }
+}
+document.addEventListener("click", e => {
+  const t = e.target.closest("[data-roomzone] [data-revopen], [data-roomzone] [data-revgo], [data-roomzone] [data-revlike], [data-roomzone] [data-revnew], [data-roomzone] [data-revedit], [data-roomzone] [data-revsave], [data-roomzone] [data-revdel], [data-roomzone] [data-revphdel]"); if (!t) return;
+  e.stopPropagation(); const d = t.dataset, sh = $(".sheet");
+  if (d.revopen) { reviewSheet(d.revopen, 0); return; }
+  if (d.revgo !== undefined && sh) { reviewSheet(sh.dataset.rev, +d.revgo); return; }
+  if (t.hasAttribute("data-revnew")) { reviewForm(""); return; }
+  if (d.revedit) { reviewForm(d.revedit); return; }
+  if (d.revsave !== undefined) { reviewSave(d.revsave); return; }
+  if (d.revlike) { rpc("reviewLike", [roomTok(), d.revlike]).then(x => { const r = ROOM.data.reviews.find(y => y.id === d.revlike); if (r) { r.likes = x.likes; r.liked = x.liked; } reviewSheet(d.revlike, +((sh && sh.dataset.at) || 0)); }).catch(er => toast(er.message)); return; }
+  if (d.revdel) { if (confirmTwice(t, "한 번 더 누르면 지워요")) roomDo("opReviewDel", [OP.token, d.revdel], "후기를 지웠어요"); return; }
+  if (d.revphdel !== undefined && sh) { if (!confirmTwice(t, "한 번 더 누르면 빼요")) return; const id = sh.dataset.rev;
+    rpc("opReviewPhotoDel", [OP.token, id, +d.revphdel]).then(x => { Object.keys(REVPH).filter(k => k.startsWith(id + ":")).forEach(k => delete REVPH[k]); const r = ROOM.data.reviews.find(y => y.id === id); if (r) r.photos = x.photos; reviewSheet(id, Math.min(+d.revphdel, x.photos - 1)); toast("사진을 뺐어요"); }).catch(er => toast(er.message)); }
+}, true);
+document.addEventListener("keydown", e => { const sh = $(".sheet[data-rev]"); if (!sh || !/Arrow(Left|Right)/.test(e.key)) return; const r = (ROOM.data.reviews || []).find(x => x.id === sh.dataset.rev); if (!r) return; const n = +sh.dataset.at + (e.key === "ArrowRight" ? 1 : -1); if (n >= 0 && n < r.photos) reviewSheet(r.id, n); });
+
 /* ---------- 시작 ---------- */
 (async function start() {
   document.querySelectorAll("#tabs button").forEach(b => b.setAttribute("aria-selected", b.dataset.tab === tab));
@@ -2883,12 +3045,13 @@ document.addEventListener("click", e => {
   APP.cfgLoaded = true;
   if (OP.url && APP.q.demo === undefined) { APP.live = true; APP.server = OP.url; setMe(null); }
   if (tab === "op") { OP.demo = !OP.url; OP.data = null; }
-  if (!APP.live) { APP.booting = false; render(); return; }
+  if (!APP.live) { APP.booting = false; render(); if (APP.q.song && songById(+APP.q.song)) openSong(+APP.q.song); return; }
   const tasks = [loadNational()];
   tasks.push(authInit().then(() => APP.token ? rpc("me", [APP.token]).then(setAcc).catch(e => toast(e.message)) : null).catch(e => console.warn("로그인 준비 실패", e)));
   await Promise.all(tasks);
   APP.booting = false;
   render();
+  if (APP.q.song && songById(+APP.q.song)) openSong(+APP.q.song);
 })();
 </script>
 <script>
