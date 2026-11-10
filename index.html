@@ -438,7 +438,9 @@ nav#tabs button:last-child{border-radius:0 999px 999px 0!important}
 nav#tabs button[aria-selected="true"]{background:var(--c)!important;box-shadow:inset 0 -5px 0 rgba(255,255,255,.8)!important}
 nav#tabs button:hover{background:var(--c)!important}
 nav#tabs .navi{width:18px;height:18px}
-@media (min-width:1000px){nav#tabs{margin:16px 0 0}nav#tabs button{padding:13px 18px!important;font-size:17px!important;display:flex!important}}
+@media (min-width:1000px){nav#tabs{margin:16px 0 0}nav#tabs button{padding:13px 18px!important;font-size:20px!important;display:flex!important}}
+nav#tabs button{flex:1 1 0!important;justify-content:center!important;text-align:center!important;font-family:var(--display)!important;font-weight:400!important;letter-spacing:.02em;text-shadow:0 1px 0 rgba(0,0,0,.12)}
+nav#tabs .navi{display:none!important}
 
 /* ===== 3. 시도 지도 ===== */
 .kmap .prov{stroke:#fff;stroke-width:1.6;stroke-linejoin:round}
@@ -2840,7 +2842,7 @@ function confirmTwice(btn, msg) { if (btn.dataset.armed) return true; btn.datase
   }
 
   function enhance() {
-    document.querySelectorAll("#tabs button").forEach(b => { if (!b.querySelector(".navi")) b.insertAdjacentHTML("afterbegin", `<svg class="navi" viewBox="0 0 24 24" aria-hidden="true">${ICON[b.dataset.tab] || ""}</svg>`); });
+    // 메뉴는 아이콘 없이 글자만
     const scene = document.querySelector(".scene");
     if (scene && !scene.querySelector(".season-layer")) {
       const k = seasonKey(); scene.classList.add("s-" + k);
