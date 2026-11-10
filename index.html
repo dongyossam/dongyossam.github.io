@@ -718,6 +718,12 @@ body.kara-on .mini-video{z-index:41;top:max(56px,env(safe-area-inset-top));botto
 .person .new{font-size:11px;color:#fff;background:var(--c0);border-radius:999px;padding:0 6px}
 .dot{width:8px;height:8px;border-radius:50%;background:var(--line);display:inline-block;flex:none}
 .dot.on{background:var(--c3)}
+/* 페이지 길이가 바뀌어도 화면이 좌우로 흔들리지 않게 스크롤 막대 자리를 늘 비워 둠 */
+html{overflow-y:scroll;scrollbar-gutter:stable}
+/* 자료방: 긴 설명·주소가 단추를 밀어내지 않게 */
+.lib-row .min,.ms-row .min{min-width:0;overflow-wrap:anywhere}
+.lib-row .btns .btn{flex:0 0 auto;min-width:92px;justify-content:center;text-align:center}
+.sheet .btns a.btn{flex:0 0 auto;min-width:92px;text-align:center}
 /* 동요샘 회원방 */
 .room{display:grid;gap:14px}
 .room-head{display:flex;align-items:flex-end;justify-content:space-between;gap:10px;flex-wrap:wrap}
