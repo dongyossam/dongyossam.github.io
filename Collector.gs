@@ -758,6 +758,7 @@ function room_(token, opToken) {
     return { id: String(r[0]), t: String(r[2]), by: String(r[3]), name: String(r[5]), pages: Number(r[7]) || 0, ok: isO_(r[8]), at: tstr_(r[9]), mine: String(r[4]) === u.id };
   });
   const members = Object.keys(accs).filter(function (k) { return accs[k].m; }).map(function (k) { return { n: accs[k].n, sc: accs[k].sc }; });
+  u.hid = hash_('c|' + u.id).slice(0, 12);
   return { me: u, op: isOp_(opToken), kinds: LIB_KINDS_, items: items, notices: notices, events: events, book: book, ms: ms, members: members, meet: meetState_(), chat: chatTail_(0), today: today_() };
 }
 function roomUpload_(token, it, name, mime, data) {
@@ -872,7 +873,7 @@ function roomCommentDel_(token, id, opToken) {
 }
 
 /* 대화방: 화면이 몇 초마다 새 말만 받아 가요 */
-function chatRow_(r) { const del = isO_(r[5]); return { no: Number(r[0]), at: tstr_(r[1]), id: String(r[2]), n: String(r[3]), x: del ? '' : String(r[4]), del: del }; }
+function chatRow_(r) { const del = isO_(r[5]); return { no: Number(r[0]), at: tstr_(r[1]), id: hash_('c|' + String(r[2])).slice(0, 12), n: String(r[3]), x: del ? '' : String(r[4]), del: del }; }
 function chatTail_(since) {
   const v = values_(SH_CHAT).slice(1).filter(function (r) { return Number(r[0]) > 0; });
   const list = since ? v.filter(function (r) { return Number(r[0]) > since; }) : v.slice(-80);

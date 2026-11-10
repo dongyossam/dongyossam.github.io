@@ -2637,7 +2637,7 @@ async function bookMake() {
 
 /* 대화방: 파이어베이스가 연결되면 실시간, 아니면 몇 초마다 새 말을 받아 와요 */
 const FB = { on: false, starting: null, db: null, uid: "" };
-function chatNorm(m) { return { k: String(m.no), no: m.no, n: m.n, x: m.x, at: m.at, del: m.del, mine: !!(ROOM.data && ROOM.data.me && m.id === ROOM.data.me.id) }; }
+function chatNorm(m) { return { k: String(m.no), no: m.no, n: m.n, x: m.x, at: m.at, del: m.del, mine: !!(ROOM.data && ROOM.data.me && m.id === ROOM.data.me.hid) }; }
 function fbNorm(key, v) { const d = new Date(v.t || Date.now()); return { k: key, no: v.t || 0, n: v.n, x: v.x, at: localDay(d) + " " + String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"), mine: v.u === FB.uid, fb: true }; }
 async function fbStart() {
   if (FB.on) return true;
