@@ -858,6 +858,27 @@ html{overflow-y:scroll;scrollbar-gutter:stable}
   .stamp:hover,.tile:hover{transform:translateY(-3px) rotate(-1deg)}
   .crow:hover,.oprow:hover{transform:translateX(3px)}
 }
+
+/* ===== 시안: 누르는 것은 모두 입체 단추처럼 (올리면 솟고, 누르면 쏙) ===== */
+:root{--edge:rgba(43,58,85,.22);--lift:0 14px 20px -6px rgba(43,58,85,.28)}
+#subnav button,.btn,.app-install,.go,.biz .card,.room-tabs .chip,.chips .chip,.topbar .btn{box-shadow:0 4px 0 var(--edge)}
+.go,.biz .card{box-shadow:0 5px 0 color-mix(in srgb,var(--c) 55%,transparent)!important}
+.biz .card{border-top:6px solid var(--c)!important}
+#subnav button[aria-current="page"]{box-shadow:0 4px 0 color-mix(in srgb,var(--c3) 60%,#000)}
+.biz .card{cursor:pointer;font:inherit;color:inherit;text-align:left;width:100%}
+@media (hover:hover) and (prefers-reduced-motion:no-preference){
+  #subnav button,.btn,.app-install,.go,.biz .card,.chip,.more,.linkbtn,.playerbar .pb>*,.home .logo,nav#tabs button{transition:transform .18s cubic-bezier(.3,1.6,.5,1),box-shadow .18s ease,filter .18s ease,background-color .16s ease,border-color .16s ease!important}
+  nav#tabs button:hover{transform:translateY(-6px) scale(1.04)!important;filter:brightness(1.06) saturate(1.05);box-shadow:0 6px 0 color-mix(in srgb,var(--c) 62%,#000),var(--lift),inset 0 2px 0 rgba(255,255,255,.35)!important}
+  nav#tabs button:active{transform:translateY(-1px) scale(1)!important;box-shadow:0 1px 0 color-mix(in srgb,var(--c) 62%,#000),inset 0 2px 0 rgba(255,255,255,.25)!important}
+  #subnav button:hover,.btn:hover,.app-install:hover,.room-tabs .chip:hover,.chips .chip:hover,.chip:hover{transform:translateY(-4px) scale(1.04)!important;box-shadow:0 6px 0 var(--edge),var(--lift)!important}
+  #subnav button[aria-current="page"]:hover{box-shadow:0 6px 0 color-mix(in srgb,var(--c3) 60%,#000),var(--lift)!important}
+  #subnav button:not([aria-current]):hover{border-color:var(--c3);background:var(--c3-soft)}
+  .go:hover,.biz .card:hover{transform:translateY(-6px) rotate(-.4deg)!important;box-shadow:0 8px 0 color-mix(in srgb,var(--c) 70%,transparent),0 18px 26px -8px rgba(43,58,85,.3)!important}
+  #subnav button:active,.btn:active,.app-install:active,.chip:active,.go:active,.biz .card:active{transform:translateY(3px) scale(.99)!important;box-shadow:0 1px 0 var(--edge)!important}
+  .more:hover,.linkbtn:hover{transform:translateY(-2px) scale(1.06)!important;text-shadow:0 2px 0 rgba(43,58,85,.15)}
+  .playerbar .pb>*:hover{transform:translateY(-3px) scale(1.08);box-shadow:0 4px 0 rgba(0,0,0,.35),0 8px 14px rgba(0,0,0,.25)}
+  .playerbar .pb>*:active{transform:translateY(1px) scale(.96);box-shadow:none}
+}
 /* 시안: 동요샘 홈 */
 nav#tabs button:nth-child(1){--c:var(--c0)}nav#tabs button:nth-child(2){--c:var(--c1)}nav#tabs button:nth-child(3){--c:var(--c3)}nav#tabs button:nth-child(4){--c:var(--c4)}
 #subnav{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin:12px 0 0}
@@ -2497,7 +2518,7 @@ function renderHome(v) {
         <p class="meta" style="margin:0">회원방 일정 가운데 '공개'로 표시한 행사만 나와요.</p></div>
     </div>
     <div><div class="mini-head"><span class="eyebrow">주요 사업</span><span class="meta">${PH("사업 이름과 설명은 연구회에서 정해 주세요")}</span></div>
-      <div class="biz">${biz.map(([c, t, d]) => `<div class="card" style="--c:var(--c${c})"><b>${t}</b><span class="meta">${d}</span></div>`).join("")}</div></div>
+      <div class="biz">${biz.map(([c, t, d]) => `<button class="card" data-tab="about" style="--c:var(--c${c})"><b>${t}</b><span class="meta">${d}</span></button>`).join("")}</div></div>
     <div class="card"><div class="mini-head"><span class="eyebrow">누구나 받는 자료</span><button class="more" data-tab="room">자료방 가기</button></div>
       <div class="nlist">${libs.map(i => `<div class="nrow"><span class="memb" style="background:var(--c3-soft);color:var(--ink)">${esc(i.ty)}</span><b>${esc(i.t.replace(/^예시: /, ""))}</b><span class="when">${esc(i.by)}</span></div>`).join("")}</div></div>
     <div class="go-grid">
