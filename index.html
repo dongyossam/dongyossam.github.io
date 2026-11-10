@@ -110,7 +110,7 @@ section h2:nth-of-type(2n)::before{color:var(--c0)}
 .tag{font-family:var(--body);font-weight:500;font-size:12.5px;color:var(--ink);background:var(--c3-soft);border-radius:999px;padding:0 10px}
 .concert{display:grid;gap:10px;padding:14px;border-radius:var(--wob);background:var(--c2-soft)}
 .concert h3{font-family:var(--display);font-weight:400;font-size:19px;margin:0}
-input[type=search],input[type=text],select,textarea{font:inherit;width:100%;padding:9px 12px;border-radius:14px;border:2px solid var(--line);background:var(--paper);color:var(--ink)}
+input[type=search],input[type=text],input[type=date],input[type=time],input[type=tel],input[type=url],select,textarea{font:inherit;width:100%;padding:9px 12px;border-radius:14px;border:2px solid var(--line);background:var(--paper);color:var(--ink)}
 textarea{min-height:110px;resize:vertical;font-family:var(--body);font-size:16px;line-height:1.8}
 .label{font-family:var(--body);font-size:13.5px;font-weight:700;color:var(--pencil)}
 .empty{font-family:var(--body);font-size:15px;color:var(--muted);background:var(--paper);border:2px dashed var(--line);border-radius:var(--wob);padding:18px;text-align:center}
@@ -679,10 +679,11 @@ body.kara-on .mini-video{z-index:41;top:max(56px,env(safe-area-inset-top));botto
 .topbar{display:flex;align-items:center;justify-content:space-between;gap:10px 16px;flex-wrap:wrap;background:var(--c2-soft);border:2px solid color-mix(in srgb,var(--c2) 45%,var(--line));border-radius:18px;padding:12px 16px;margin:8px 0 12px}
 .topbar p{margin:0;font-size:14.5px;line-height:1.5;color:var(--ink);flex:1 1 320px}
 .topbar .btns{margin:0;flex-wrap:nowrap}
+.topbar .btns .btn{white-space:nowrap}
 .topbar.on{background:var(--c3-soft);border-color:color-mix(in srgb,var(--c3) 45%,var(--line))}
 .topbar.demo{background:var(--c4-soft);border-color:color-mix(in srgb,var(--c4) 40%,var(--line))}
 .content .example:empty{display:none}
-@media (max-width:699px){.topbar{padding:10px 12px}.topbar p{font-size:13.5px}.topbar .btns{width:100%}.topbar .btns .btn{flex:1}}
+@media (max-width:699px){.topbar{padding:10px 12px}.topbar p{font-size:13.5px}.topbar .btns{width:100%}.topbar .btns .btn{flex:1;padding:7px 8px;font-size:14px}}
 .btn.glogin{display:inline-flex;align-items:center;gap:8px;background:var(--paper);color:var(--ink);border-color:var(--line)}
 .btn.glogin svg{width:18px;height:18px}
 .memfields{display:grid;gap:10px;border:2px dashed var(--line);border-radius:14px;padding:12px}
@@ -691,6 +692,22 @@ body.kara-on .mini-video{z-index:41;top:max(56px,env(safe-area-inset-top));botto
 .priv th,.priv td{border:1px solid var(--line);padding:5px 8px;text-align:left;vertical-align:top}
 .priv th{white-space:nowrap;background:var(--bg)}
 .priv p{font-size:13px;margin:4px 0}
+.calhead{display:flex;align-items:center;gap:10px}
+.calhead h3{font-family:var(--display);font-weight:400;font-size:22px;margin:0}
+.calhead .btn{padding:4px 12px}
+.rcal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));border-top:2px solid var(--line);border-left:2px solid var(--line);border-radius:12px;overflow:hidden}
+.rcal>div{border-right:2px solid var(--line);border-bottom:2px solid var(--line);min-height:92px;padding:5px 6px;display:flex;flex-direction:column;gap:3px;min-width:0;background:var(--paper)}
+.rcal .dh{min-height:0;text-align:center;font-weight:700;font-size:13px;color:var(--muted);background:var(--bg);padding:6px 0}
+.rcal .sun .dn,.rcal .dh.sun{color:var(--c0)}.rcal .sat .dn,.rcal .dh.sat{color:var(--c4)}
+.rcal .off{background:var(--bg)}.rcal .off .dn{opacity:.45}
+.rcal .dn{font-weight:700;font-size:13px;width:24px;height:24px;display:inline-grid;place-items:center}
+.rcal .is-today .dn{background:var(--c3);color:#fff!important;border-radius:50%}
+.rcal [data-calday]{cursor:pointer}.rcal [data-calday]:hover{background:var(--sky)}
+.cev{display:block;width:100%;text-align:left;border:0;border-radius:6px;background:var(--c3-soft);color:var(--ink);font:600 12px var(--body);padding:2px 5px;cursor:pointer;overflow:hidden}
+.cev .t{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cev.big{background:var(--c1-soft)}.cev.me{box-shadow:inset 3px 0 0 var(--c3)}
+.evinfo{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;align-items:baseline}
+@media (max-width:699px){.rcal>div{min-height:58px;padding:3px}.rcal .dn{font-size:12px;width:20px;height:20px}.cev{font-size:10.5px;padding:1px 3px}.cev .t{white-space:normal;max-height:2.6em}}
 /* 동요샘 회원방 */
 .room{display:grid;gap:14px}
 .room-head{display:flex;align-items:flex-end;justify-content:space-between;gap:10px;flex-wrap:wrap}
@@ -2468,7 +2485,17 @@ function calView() {
   const row = e => `<div class="card ev${e.big ? " big" : ""}"><div class="date"><b>${Number(e.d.slice(5, 7))}.${Number(e.d.slice(8, 10))}</b><small>${"일월화수목금토"[new Date(e.d + "T00:00:00").getDay()]}${e.tm ? " " + esc(e.tm) : ""}</small></div>
     <div class="min"><b>${e.big ? `<span class="memb big">큰 행사</span> ` : ""}${esc(e.t)}</b>${e.p ? `<small class="meta">${esc(e.p)}</small>` : ""}<small class="meta">${e.att.length ? "참석 " + e.att.length + "명 · " + e.att.map(esc).join(", ") : "아직 참석 표시가 없어요"}</small></div>
     <div class="btns">${e.d >= td ? `<button class="vote${e.me ? " on" : ""}" data-attend="${esc(e.id)}">${e.me ? "참석해요" : "참석 표시"}</button>` : ""}${roomOp() ? `<button class="more" data-evdel="${esc(e.id)}">지우기</button>` : ""}</div></div>`;
-  return `${roomOp() ? `<div class="card"><span class="eyebrow">일정 올리기 (운영진)</span>
+  const cm = ROOM.calM || td.slice(0, 7), [cy, cmo] = cm.split("-").map(Number), first = new Date(cy, cmo - 1, 1), start = new Date(cy, cmo - 1, 1 - first.getDay());
+  let cells = "일월화수목금토".split("").map((w, i) => `<div class="dh${i === 0 ? " sun" : i === 6 ? " sat" : ""}">${w}</div>`).join("");
+  for (let i = 0; i < 42; i++) {
+    const dd = new Date(start); dd.setDate(start.getDate() + i);
+    if (i >= 35 && dd.getMonth() !== cmo - 1) break;
+    const k = localDay(dd), evs = d.events.filter(e => e.d === k);
+    cells += `<div class="dc${dd.getMonth() !== cmo - 1 ? " off" : ""}${k === td ? " is-today" : ""}${dd.getDay() === 0 ? " sun" : dd.getDay() === 6 ? " sat" : ""}"${roomOp() ? ` data-calday="${k}"` : ""}><span class="dn">${dd.getDate()}</span>${evs.map(e => `<button class="cev${e.big ? " big" : ""}${e.me ? " me" : ""}" data-evopen="${esc(e.id)}" title="${esc(e.t)}"><span class="t">${e.tm ? esc(e.tm) + " " : ""}${esc(e.t)}</span></button>`).join("")}</div>`;
+  }
+  const calCard = `<div class="card rcal-card"><div class="calhead"><button class="btn ghost" data-calmove="-1" aria-label="이전 달">◀</button><h3>${cy}년 ${cmo}월</h3><button class="btn ghost" data-calmove="1" aria-label="다음 달">▶</button>${cm !== td.slice(0, 7) ? `<button class="more" data-calmove="0">이번 달</button>` : ""}</div>
+    <div class="rcal">${cells}</div><p class="meta" style="margin:0">일정을 누르면 자세한 내용과 참석 표시를 볼 수 있어요.${roomOp() ? " 빈 날짜를 누르면 아래 일정 올리기에 그 날짜가 들어가요." : ""}</p></div>`;
+  return `${calCard}${roomOp() ? `<div class="card" id="evForm"><span class="eyebrow">일정 올리기 (운영진)</span>
       <div class="form2"><label class="fld"><span class="label">날짜</span><input type="date" id="evD"></label><label class="fld"><span class="label">시간 (고르기)</span><input type="time" id="evTm"></label></div>
       <div class="form2"><label class="fld"><span class="label">제목</span><input type="text" id="evT" maxlength="50" placeholder="예: 11월 정기 모임"></label><label class="fld"><span class="label">장소 (고르기)</span><input type="text" id="evP" maxlength="60" placeholder="예: 동요샘 연습실, 화상 회의"></label></div>
       <label class="check"><input type="checkbox" id="evBig"> 큰 행사 (발표회·음반 녹음처럼 꼭 알려야 할 일정)</label>
@@ -2476,6 +2503,18 @@ function calView() {
     <div class="mini-head"><span class="eyebrow">다가오는 일정</span></div>
     ${up.map(row).join("") || `<div class="empty">다가오는 일정이 없어요.</div>`}
     ${past.length ? `<details class="past"><summary>지난 일정 ${past.length}개</summary>${past.map(row).join("")}</details>` : ""}`;
+}
+
+function evSheet(id) {
+  const e = ROOM.data.events.find(x => x.id === id); if (!e) return;
+  const td = ROOM.data.today || localDay(), dt = new Date(e.d + "T00:00:00");
+  $("#sheetHost").innerHTML = `<div class="scrim" data-close></div><div class="sheet" role="dialog" aria-modal="true" aria-label="${esc(e.t)}" data-roomzone><div class="in">
+    <button class="btn ghost close" data-close>닫기</button>
+    <span class="eyebrow">${e.big ? "큰 행사" : "모임 일정"}</span><h3>${esc(e.t)}</h3>
+    <div class="evinfo"><span class="label">날짜</span><span>${dt.getMonth() + 1}월 ${dt.getDate()}일 ${"일월화수목금토"[dt.getDay()]}요일${e.tm ? " " + esc(e.tm) : ""}</span>
+      ${e.p ? `<span class="label">장소</span><span>${esc(e.p)}</span>` : ""}
+      <span class="label">참석 예정</span><span>${e.att.length ? e.att.length + "명 · " + e.att.map(esc).join(", ") : "아직 없어요"}</span></div>
+    <div class="btns">${e.d >= td ? `<button class="btn${e.me ? " ghost" : ""}" data-attend="${esc(e.id)}">${e.me ? "참석 표시 풀기" : "참석할게요"}</button>` : ""}${roomOp() ? `<button class="btn ghost danger" data-evdel="${esc(e.id)}">일정 지우기</button>` : ""}</div></div></div>`;
 }
 
 /* 공지 */
@@ -2703,6 +2742,8 @@ document.addEventListener("click", e => {
   if (d.libget) { libGet(d.libget); return; }
   if (d.attend) { roomDo("roomAttend", [roomTok(), d.attend], "", r => toast(r.on ? "참석으로 표시했어요" : "참석 표시를 풀었어요")); return; }
   if (t.hasAttribute("data-evadd")) { const v = s => ($(s) || {}).value || ""; roomDo("opEvent", [OP.token, { d: v("#evD"), tm: v("#evTm"), t: v("#evT").trim(), p: v("#evP").trim(), big: $("#evBig").checked }], "일정을 올렸어요"); return; }
+  if (d.calmove !== undefined) { const td = (ROOM.data && ROOM.data.today) || localDay(), cur = ROOM.calM || td.slice(0, 7); ROOM.calM = d.calmove === "0" ? td.slice(0, 7) : monthAdd(cur, +d.calmove); render(); return; }
+  if (d.evopen) { evSheet(d.evopen); return; }
   if (d.evdel) { if (confirmTwice(t, "한 번 더 누르면 지워요")) roomDo("opEventDel", [OP.token, d.evdel], "일정을 지웠어요"); return; }
   if (t.hasAttribute("data-ntadd")) { roomDo("opNotice", [OP.token, $("#ntT").value, $("#ntB").value, $("#ntPin").checked], "공지를 올렸어요"); return; }
   if (d.ntpin) { roomDo("opNoticePin", [OP.token, d.ntpin]); return; }
@@ -2729,6 +2770,13 @@ document.addEventListener("change", e => { const b = e.target.closest("[data-bks
 document.addEventListener("input", e => { if (e.target.id === "libQ") { ROOM.q = e.target.value; const pos = e.target.selectionStart; render(); const q = $("#libQ"); if (q) { q.focus(); q.setSelectionRange(pos, pos); } } });
 document.addEventListener("keydown", e => { if (e.target.id === "chatX" && e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); chatSend(); } });
 function confirmTwice(btn, msg) { if (btn.dataset.armed) return true; btn.dataset.armed = "1"; const o = btn.textContent; btn.textContent = msg; setTimeout(() => { if (btn.isConnected) { delete btn.dataset.armed; btn.textContent = o; } }, 3000); return false; }
+
+document.addEventListener("click", e => {
+  const c = e.target.closest("[data-calday]"); if (!c || e.target.closest("[data-evopen]")) return;
+  const inp = $("#evD"); if (!inp) return;
+  inp.value = c.dataset.calday; $("#evForm").scrollIntoView({ block: "center", behavior: "smooth" }); setTimeout(() => { const t = $("#evT"); if (t) t.focus(); }, 300);
+  toast(`${Number(c.dataset.calday.slice(5, 7))}월 ${Number(c.dataset.calday.slice(8, 10))}일 일정을 적어 주세요`);
+});
 
 /* ---------- 시작 ---------- */
 (async function start() {

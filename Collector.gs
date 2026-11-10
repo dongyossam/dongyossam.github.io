@@ -751,7 +751,7 @@ function room_(token, opToken) {
   }).reverse();
   const events = values_(SH_EVT).slice(1).filter(function (r) { return r[0] !== ''; }).map(function (r) {
     const att = String(r[6] || '').split(',').filter(String);
-    return { id: String(r[0]), d: dstr_(r[1]), tm: hm_(r[2]), t: String(r[3]), p: String(r[4]), big: isO_(r[5]), att: att.map(function (x) { return accs[x] ? accs[x].n : x; }), me: att.indexOf(u.id) !== -1 };
+    return { id: String(r[0]), d: dstr_(r[1]), tm: hm_(r[2]), t: String(r[3]), p: String(r[4]), big: isO_(r[5]), att: att.map(function (x) { return accs[x] ? accs[x].n : x === ownerEmail_() ? '동요샘 관리 계정' : '운영진'; }), me: att.indexOf(u.id) !== -1 };
   }).sort(function (a, b) { return a.d < b.d ? -1 : a.d > b.d ? 1 : a.tm < b.tm ? -1 : 1; });
   const book = bookTitle_();
   const ms = values_(SH_MS).slice(1).filter(function (r) { return r[0] !== '' && String(r[1]) === book; }).map(function (r) {
