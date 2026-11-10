@@ -2,32 +2,30 @@
  * 동요샘 노래상자 — 서버 (Collector.gs)
  * ------------------------------------------------------------
  * 동요샘 운영진 구글 시트 하나에만 설치합니다. 선생님들은 아무것도 설치하지 않고
- * 노래상자 화면에서 가입 신청 → 운영진 승인 → 로그인 해서 씁니다.
- * 모든 반의 도장·투표·릴레이·바꾼 가사가 이 시트에 반별로 쌓입니다.
+ * 노래상자 화면에서 구글로 로그인 → 가입 신청 → 운영진 승인 → 씁니다.
+ * 모든 반의 도장·투표·릴레이·바꾼 가사와 동요샘 회원방 자료가 이 시트에 쌓입니다.
  *
+ * 처음 한 번: 함수 목록에서 setup 을 골라 실행하고 권한을 허용하세요.
+ *   이 구글 계정이 '동요샘 관리 계정'이 되어 늘 운영진으로 들어가요.
  * 배포 설정: 다음 사용자로 실행 = 나, 액세스 권한 = 모든 사용자
  * 배포 주소(…/exec)는 저장소 national.json 의 collector 칸에 넣습니다.
  *
- * 운영진 비밀번호 정하기: 맨 아래쪽 setOperatorPassword 안의 "새비밀번호"를 바꾸고
- * 함수 목록에서 setOperatorPassword 를 골라 한 번 실행하세요. (정하기 전에는 1234)
- *
- * 운영 일은 노래상자 화면 맨 아래 '운영진' 메뉴에서 합니다.
- *  - 계정: 가입 신청 승인·거절, 비밀번호 잊은 선생님께 임시 비밀번호 만들어 주기
- *  - 곡 관리, 가사 확인(공개/숨김), 릴레이 곡, 참여 반 숨기기, 문의 이메일
+ * 운영 일은 노래상자 화면 맨 아래 '운영진' 메뉴에서 합니다. (운영진 권한이 있는 구글 계정으로 로그인)
+ *  - 계정: 가입 승인·거절, 동요샘 회원 승인, 운영진 권한 주기·빼기, 도교육청 등록 명단 복사
+ *  - 곡 관리, 오늘의 동요, 가사 확인, 릴레이 곡, 참여 반 숨기기, 메일 설정, 운영 기록
  * 시트에서 직접 고쳐도 됩니다. 고친 내용은 2분 안에 화면에 반영됩니다.
  *************************************************************/
 
-const SERVER_VERSION = 9;   // 9: 동요샘 회원방(자료방·일정·공지·곡집 원고·대화방·화상 회의)  8: 박자(4/4)가 날짜로 바뀌던 문제 고침  7: 엑셀로 곡 한꺼번에 올리기  6: 노래 파일(mp3)·악보 파일 올리기, 곡 종류(창작곡·편곡)·편곡자, 발표회 없는 개인 창작곡  5: 이번 달·학년도 집계, 로그인 유지, 알림 메일, 기록 내려받기, 공개 동의, 운영 기록  4: 곡 지우기·예시 곡 한꺼번에 지우기  3: 한 시트 방식 — 가입·승인·로그인, 계정 하나에 여러 반
+const SERVER_VERSION = 10;  // 10: 구글 로그인, 운영진도 구글 계정 권한으로, 회원 신청에 직위·휴대전화·도교육청 등록 명단 동의  9: 동요샘 회원방(자료방·일정·공지·곡집 원고·대화방·화상 회의)  8: 박자(4/4)가 날짜로 바뀌던 문제 고침  7: 엑셀로 곡 한꺼번에 올리기  6: 노래 파일(mp3)·악보 파일 올리기, 곡 종류(창작곡·편곡)·편곡자, 발표회 없는 개인 창작곡  5: 이번 달·학년도 집계, 로그인 유지, 알림 메일, 기록 내려받기, 공개 동의, 운영 기록  4: 곡 지우기·예시 곡 한꺼번에 지우기  3: 한 시트 방식 — 가입·승인·로그인, 계정 하나에 여러 반
 const TZ_ = 'Asia/Seoul';
 const BOARD_CACHE_SEC = 120;
-const TOKEN_SEC = 21600;    // 운영진 메뉴 로그인 6시간
 const MAX_CLASSES = 20;     // 계정 하나에 만들 수 있는 반
 const REGIONS_ = ['서울','부산','대구','인천','광주','대전','울산','세종','경기','강원','충북','충남','전북','전남','경북','경남','제주'];
 
 const SH_ACC = '계정', SH_CLASSES = '반', SH_SONGS = '곡 목록', SH_SET = '설정', SH_LYRICS = '바꾼 가사', SH_RELAY = '릴레이 기록', SH_LOG = '운영 기록', SH_TODAY = '오늘의 동요';
 const SH_LIB = '회원방 자료', SH_EVT = '회원방 일정', SH_NOTE = '회원방 공지', SH_CMT = '회원방 댓글', SH_CHAT = '회원방 대화', SH_MS = '곡집 원고';
 const HEAD_ = {
-  '계정': ['이메일(구글)', '구글 UID', '선생님 이름', '학교', '지역', '신청한 날', '승인', '마지막 로그인', '메모', '동요샘 회원', '직위', '휴대전화', '도 등록 명단 동의', '회원 신청한 때'],
+  '계정': ['이메일(구글)', '구글 UID', '선생님 이름', '학교', '지역', '신청한 날', '승인', '마지막 로그인', '메모', '동요샘 회원', '직위', '휴대전화', '도 등록 명단 동의', '회원 신청한 때', '역할'],
   '반': ['반 ID', '아이디', '반 이름', '지역', '도장', '투표 달', '투표 곡', '좋아요', '릴레이', '만든 날', '마지막 기록', '숨김'],
   '곡 목록': ['곡번호', '곡 제목', '작사', '작곡', '발표회', '발표 연도', '추천 학년군', '주제(쉼표로)', '계절', '조성', '박자', '음역', '가사', '소개', '수업 활용', '영상 주소', '악보 주소', '숨김', '공개 동의', '노래 파일', '곡 종류', '편곡'],
   '설정': ['항목', '값', '설명'],
@@ -200,11 +198,12 @@ function who_(idToken) {
 // 로그인한 뒤 내 상태: none(가입 전) / wait(승인 기다림) / X(거절) / O(승인)
 function meApi_(idToken) {
   const v = verify_(idToken), a = findAcc_(v.email);
-  if (!a) return { status: 'none', email: v.email };
+  const op = !!opInfo_(idToken);
+  if (!a) return { status: 'none', email: v.email, op: op };
   const st = String(a.r[6]).trim();
-  if (!isO_(st)) return { status: st ? 'X' : 'wait', email: v.email, name: String(a.r[2]), school: String(a.r[3]), member: memberSt_(a.r[9]) };
+  if (!isO_(st)) return { status: st ? 'X' : 'wait', email: v.email, name: String(a.r[2]), school: String(a.r[3]), member: memberSt_(a.r[9]), op: op };
   if (dstr_(a.r[7]) !== today_()) { try { sheet_(SH_ACC).getRange(a.row, 8).setValue(now_()); } catch (e) {} }
-  const me = me_(v.email); me.status = 'O'; me.email = v.email; return me;
+  const me = me_(v.email); me.status = 'O'; me.email = v.email; me.op = op; return me;
 }
 
 /************ 반 ************/
@@ -367,26 +366,53 @@ function getBoard_() {
 function clearBoardCache() { bust_(); }
 
 /************ 운영진 ************/
-function opHash_() { return PropertiesService.getScriptProperties().getProperty('OP_HASH') || hash_('1234'); }
-function opLogin_(pw, name) {
-  if (hash_(String(pw || '')) !== opHash_()) return { ok: false, message: '운영진 비밀번호가 맞지 않아요.' };
-  const n = clean_(name, 20);
-  if (!n) return { ok: false, message: '운영진 이름을 적어 주세요. 누가 처리했는지 기록에 남아요.' };
-  const token = Utilities.getUuid();
-  CacheService.getScriptCache().put('OP_' + token, n, TOKEN_SEC);
-  log_(n, '운영진 메뉴에 들어옴', '');
-  return { ok: true, token: token, name: n };
+// 운영진: 이 시트·앱스크립트를 가진 구글 계정(동요샘 관리 계정)은 늘 운영진이에요.
+// 다른 선생님은 가입 승인을 받은 뒤, 운영진이 계정 칸에서 '운영진 권한'을 주면 운영진이 돼요.
+function ownerEmail_() {
+  const p = PropertiesService.getScriptProperties(); let e = p.getProperty('OWNER');
+  if (!e) { try { e = String(Session.getEffectiveUser().getEmail() || '').toLowerCase(); } catch (x) { e = ''; } if (e) p.setProperty('OWNER', e); }
+  return e || '';
+}
+function opInfo_(token) {
+  if (!token) return null;
+  let v; try { v = verify_(token); } catch (e) { return null; }
+  const c = CacheService.getScriptCache(), k = 'OPE_' + v.email, hit = c.get(k);
+  if (hit) return hit === '-' ? null : JSON.parse(hit);
+  let info = null;
+  try {
+    const a = findAcc_(v.email), owner = v.email === ownerEmail_();
+    if (owner || (a && isO_(String(a.r[6]).trim()) && String(a.r[14] || '').trim() === '운영진'))
+      info = { email: v.email, name: a ? String(a.r[2]) : '동요샘 관리 계정', owner: owner };
+  } catch (e) {}
+  c.put(k, info ? JSON.stringify(info) : '-', 300);
+  return info;
 }
 function log_(who, what, target) { try { sheet_(SH_LOG).appendRow([now_(), who, what, String(target || '').slice(0, 80)]); } catch (e) {} }
-function opWho_(token) { return CacheService.getScriptCache().get('OP_' + token) || '운영진'; }
-function opLogout_(token) { if (token) CacheService.getScriptCache().remove('OP_' + token); return { ok: true }; }
-function opNeed_(token) { if (!token || !CacheService.getScriptCache().get('OP_' + token)) throw new Error('운영진 로그인이 필요해요. 다시 로그인해 주세요.'); }
+function opWho_(token) { const i = opInfo_(token); return i ? i.name : '운영진'; }
+function opNeed_(token) { if (!opInfo_(token)) throw new Error('운영진 권한이 있는 구글 계정으로 로그인해 주세요.'); }
+function opRole_(token, email, role) {
+  opNeed_(token);
+  const a = findAcc_(String(email)); if (!a) throw new Error('계정을 찾지 못했어요.');
+  if (role === '운영진' && !isO_(String(a.r[6]).trim())) throw new Error('가입 승인을 먼저 해 주세요.');
+  sheet_(SH_ACC).getRange(a.row, 15).setValue(role === '운영진' ? '운영진' : '');
+  CacheService.getScriptCache().remove('OPE_' + String(a.r[0]).toLowerCase());
+  log_(opWho_(token), role === '운영진' ? '운영진 권한 줌' : '운영진 권한 뺌', email + ' ' + String(a.r[2]));
+  return opData_(token);
+}
 // 드라이브 권한 허용: 노래 파일·악보 올리기용. 한 번 실행하면 권한 창이 떠요 (폴더 '동요샘 노래상자 파일'이 생겨요)
 function allowDrive() { Logger.log('파일 폴더: ' + folder_().getUrl()); }
 // 알림 메일 권한 허용: 새 코드를 붙여 넣은 뒤 이 함수를 한 번 실행하면 메일 보내기 권한을 허용하는 창이 떠요 (메일은 보내지 않아요)
 function allowMail() { Logger.log('오늘 보낼 수 있는 메일: ' + MailApp.getRemainingDailyQuota()); }
-// 운영진 비밀번호 정하기: 아래 "새비밀번호"를 바꾸고 이 함수를 한 번 실행하세요
-function setOperatorPassword() { PropertiesService.getScriptProperties().setProperty('OP_HASH', hash_('새비밀번호')); }
+// 처음 한 번: 이 함수를 실행하면 이 구글 계정이 '동요샘 관리 계정'(늘 운영진)으로 정해지고, 필요한 권한을 한꺼번에 허용해요
+function setup() {
+  PropertiesService.getScriptProperties().deleteProperty('OWNER');
+  Logger.log('관리 계정(늘 운영진): ' + ownerEmail_());
+  Logger.log('파일 폴더: ' + folder_().getUrl());
+  Logger.log('오늘 보낼 수 있는 메일: ' + MailApp.getRemainingDailyQuota());
+  try { UrlFetchApp.fetch('https://www.googleapis.com', { muteHttpExceptions: true }); } catch (e) {}
+  fixHeads_();
+  Logger.log('준비 끝! 이제 [배포]를 해 주세요.');
+}
 
 // 예전 시트에 새 칸 제목 채우기
 function fixHeads_() {
@@ -412,19 +438,21 @@ function opData_(token) {
   const logs = values_(SH_LOG).slice(1).slice(-60).reverse().map(function (r) { return { at: tstr_(r[0]), who: String(r[1]), what: String(r[2]), target: String(r[3]) }; });
   const accounts = values_(SH_ACC).slice(1).filter(function (r) { return r[0] !== ''; }).map(function (r) {
     const st = String(r[6] || '').trim();
-    return { id: String(r[0]), name: String(r[2]), school: String(r[3]), region: String(r[4]), at: tstr_(r[5]), last: tstr_(r[7]), status: isO_(st) ? 'O' : st ? 'X' : '', member: memberSt_(r[9]), pos: String(r[10] || ''), phone: String(r[11] || ''), reg: isO_(r[12]), mAt: tstr_(r[13]) };
+    return { id: String(r[0]), name: String(r[2]), school: String(r[3]), region: String(r[4]), at: tstr_(r[5]), last: tstr_(r[7]), status: isO_(st) ? 'O' : st ? 'X' : '', member: memberSt_(r[9]), pos: String(r[10] || ''), phone: String(r[11] || ''), reg: isO_(r[12]), mAt: tstr_(r[13]), role: String(r[14] || '').trim() === '운영진' ? '운영진' : '' };
   });
   const classes = values_(SH_CLASSES).slice(1).filter(function (r) { return r[0] !== ''; }).map(function (r) {
     return { pid: String(r[0]), owner: String(r[1]), name: String(r[2]), region: String(r[3]), stamps: parse_(r[4], []).length, last: tstr_(r[10]), hidden: isO_(r[11]) };
   });
   const set = settings_();
-  return { songs: songs, lyrics: lyrics, accounts: accounts, classes: classes, logs: logs, schedule: schedule, today: today_(), me: opWho_(token), contact: String(set['문의 이메일'] || ''), notify: String(set['알림 이메일'] || ''),
+  const oi = opInfo_(token);
+  return { owner: ownerEmail_(), myEmail: oi ? oi.email : '', songs: songs, lyrics: lyrics, accounts: accounts, classes: classes, logs: logs, schedule: schedule, today: today_(), me: opWho_(token), contact: String(set['문의 이메일'] || ''), notify: String(set['알림 이메일'] || ''),
     relay: { id: String(set['릴레이 이름'] || ''), song: num_(set['릴레이 곡번호']) } };
 }
 function opAccount_(token, id, status) {
   opNeed_(token);
   const a = findAcc_(String(id)); if (!a) throw new Error('계정을 찾지 못했어요.');
   sheet_(SH_ACC).getRange(a.row, 7).setValue(status === 'O' ? 'O' : status === 'X' ? 'X' : '');
+  CacheService.getScriptCache().remove('OPE_' + String(a.r[0]).toLowerCase());
   sheet_(SH_ACC).getRange(a.row, 9).setValue((status === 'O' ? '승인' : status === 'X' ? '거절' : '다시 검토') + ' · ' + opWho_(token) + ' · ' + now_().slice(0, 16));
   log_(opWho_(token), status === 'O' ? '계정 승인' : status === 'X' ? '계정 거절' : '계정 다시 검토', id + ' ' + String(a.r[2]));
   bust_(); return opData_(token);
@@ -628,14 +656,14 @@ const LIB_KINDS_ = ['악보', '반주(MR)', '음원', '가사', '수업 자료',
 const ROOM_FILE_MAX = 20 * 1024 * 1024;
 function memberSt_(v) { const t = String(v == null ? '' : v).trim(); return isO_(t) ? 'O' : t === '신청' ? '신청' : t ? 'X' : ''; }
 function member_(token) {
-  // 운영진 메뉴에 로그인한 기기는 회원 계정이 없어도 '운영진'으로 들어와요
-  const op = token ? CacheService.getScriptCache().get('OP_' + token) : null;
-  if (op) return { id: 'op_' + hash_('op|' + op).slice(0, 12), name: op + ' (운영진)', school: '운영진', op: true };
-  const id = who_(token), a = findAcc_(id);
-  if (!a || memberSt_(a.r[9]) !== 'O') throw new Error('동요샘 회원만 쓸 수 있어요. 운영진이 회원으로 승인하면 열려요.');
-  return { id: id, name: String(a.r[2]), school: String(a.r[3]) };
+  const v = verify_(token), a = findAcc_(v.email);
+  if (a && isO_(String(a.r[6]).trim()) && memberSt_(a.r[9]) === 'O') return { id: v.email, name: String(a.r[2]), school: String(a.r[3]) };
+  // 운영진은 회원 승인이 없어도 들어와요
+  const op = opInfo_(token);
+  if (op) return { id: v.email, name: op.name, school: a ? String(a.r[3]) : '운영진', op: true };
+  throw new Error('동요샘 회원만 쓸 수 있어요. 운영진이 회원으로 승인하면 열려요.');
 }
-function isOp_(t) { return !!(t && CacheService.getScriptCache().get('OP_' + t)); }
+function isOp_(t) { return !!opInfo_(t); }
 function rid_() { return Utilities.getUuid().replace(/-/g, '').slice(0, 10); }
 function findRow_(name, id) {
   const v = values_(name);
@@ -977,7 +1005,6 @@ function rtdb_(method, path, data) {
 }
 function fbJoin_(token, opToken) {
   const u = member_(token);
-  if (u.op) return { uid: '' };
   const v = verify_(token), op = isOp_(opToken), c = CacheService.getScriptCache(), key = 'FBJ_' + v.uid, want = u.name + '|' + (op ? 1 : 0);
   if (c.get(key) === want) return { uid: v.uid };
   const r = rtdb_('put', '/members/' + v.uid, { n: u.name, op: op });
@@ -998,7 +1025,7 @@ const FN_ = {
   signup: signup_, me: meApi_,
   addClass: addClass_, editClass: editClass_,
   toggleStamp: toggleStamp_, vote: vote_, joinRelay: joinRelay_, addLyric: addLyric_, toggleLike: toggleLike_,
-  opLogin: opLogin_, opLogout: opLogout_, opData: opData_, opSaveSong: opSaveSong_, opLyric: opLyric_, opRelay: opRelay_,
+  opRole: opRole_, opData: opData_, opSaveSong: opSaveSong_, opLyric: opLyric_, opRelay: opRelay_,
   opClass: opClass_, opAccount: opAccount_, opContact: opContact_,
   opDeleteSong: opDeleteSong_, opClearExamples: opClearExamples_, opNotify: opNotify_, opExport: opExport_, opToday: opToday_, opUpload: opUpload_, opBulkSongs: opBulkSongs_,
   opMember: opMember_, roomApply: roomApply_, room: room_, roomUpload: roomUpload_, roomEdit: roomEdit_, roomFile: roomFile_,

@@ -266,7 +266,6 @@ textarea.plain{font-family:var(--body);font-size:15px;line-height:1.6;min-height
   .songs-split .filters{position:sticky;top:calc(16px + env(safe-area-inset-top,0px))}
   .hero img{aspect-ratio:1200/600}
   .stampbook{grid-template-columns:repeat(4,minmax(0,1fr))}
-  .foot{text-align:left}
 }
 
 .home{all:unset;display:flex;align-items:center;gap:10px;cursor:pointer;border-radius:16px}
@@ -673,6 +672,13 @@ body.kara-on .mini-video{z-index:41;top:max(56px,env(safe-area-inset-top));botto
 /* 모바일: 제목을 해를 뺀 칸 가운데로, 위아래 여백 맞춤 */
 @media (max-width:699px){.scene .title{top:26px;right:min(21vw,90px)}}
 
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:10px 16px;flex-wrap:wrap;background:var(--c2-soft);border:2px solid color-mix(in srgb,var(--c2) 45%,var(--line));border-radius:18px;padding:12px 16px;margin:8px 0 12px}
+.topbar p{margin:0;font-size:14.5px;line-height:1.5;color:var(--ink);flex:1 1 320px}
+.topbar .btns{margin:0;flex-wrap:nowrap}
+.topbar.on{background:var(--c3-soft);border-color:color-mix(in srgb,var(--c3) 45%,var(--line))}
+.topbar.demo{background:var(--c4-soft);border-color:color-mix(in srgb,var(--c4) 40%,var(--line))}
+.content .example:empty{display:none}
+@media (max-width:699px){.topbar{padding:10px 12px}.topbar p{font-size:13.5px}.topbar .btns{width:100%}.topbar .btns .btn{flex:1}}
 .btn.glogin{display:inline-flex;align-items:center;gap:8px;background:var(--paper);color:var(--ink);border-color:var(--line)}
 .btn.glogin svg{width:18px;height:18px}
 .memfields{display:grid;gap:10px;border:2px dashed var(--line);border-radius:14px;padding:12px}
@@ -959,6 +965,7 @@ function setMe(c) {
 /* 서버가 돌려준 내 계정·반 목록 반영 (고른 반 기억) */
 function setAcc(me) {
   if (me && !me.classes) me.classes = [];
+  if (me && me.op === undefined && APP.acc) me.op = APP.acc.op;
   APP.acc = me; if (me && me.month) MONTH = me.month;
   const list = (me && me.classes) || [];
   if (me && me.newCid) APP.cid = me.newCid;
@@ -966,7 +973,7 @@ function setAcc(me) {
   store.set("dys_cid", APP.cid);
   setMe(list.find(c => c.cid === APP.cid));
 }
-function signOut(msg) { if (APP.auth) { try { firebase.auth().signOut(); } catch (e) {} } APP.token = ""; APP.acc = null; if (typeof ROOM !== "undefined") { ROOM.data = null; ROOM.chat = []; } store.del("dys_user"); setMe(null); if (msg) toast(msg); }
+function signOut(msg) { if (APP.auth) { try { firebase.auth().signOut(); } catch (e) {} } APP.token = ""; APP.acc = null; if (typeof OP !== "undefined") OP.data = null; if (typeof ROOM !== "undefined") { ROOM.data = null; ROOM.chat = []; } store.del("dys_user"); setMe(null); if (msg) toast(msg); }
 function emptyRegions() { const r = {}; REGIONS.forEach(([n]) => r[n] = { stamps: 0, classes: 0 }); return r; }
 /* 체험 모드(예시 학교 포함) 또는 수집기가 아직 없을 때(우리 반만)의 전국 현황 */
 function localNational(withDemo) {
@@ -1070,14 +1077,22 @@ function pickToday() {
 }
 function stampBtn(id) { return ME.stamps.has(id) ? `<button class="btn done" data-stamp="${id}">불렀어요 도장 찍음</button>` : `<button class="btn ghost" data-stamp="${id}">우리 반이 불렀어요</button>`; }
 function ranked() { return Object.entries(regionsNow()).sort((a, b) => b[1].stamps - a[1].stamps); }
+const GICON = `<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#4285F4" d="M22.5 12.3c0-.8-.1-1.5-.2-2.2H12v4.2h5.9a5 5 0 0 1-2.2 3.3v2.7h3.5c2.1-1.9 3.3-4.7 3.3-8z"/><path fill="#34A853" d="M12 23c3 0 5.5-1 7.3-2.7l-3.5-2.7c-1 .7-2.3 1.1-3.8 1.1-2.9 0-5.4-2-6.3-4.6H2.1v2.8A11 11 0 0 0 12 23z"/><path fill="#FBBC05" d="M5.7 14.1a6.6 6.6 0 0 1 0-4.2V7.1H2.1a11 11 0 0 0 0 9.8z"/><path fill="#EA4335" d="M12 5.4c1.6 0 3.1.6 4.2 1.7l3.1-3.1A11 11 0 0 0 2.1 7.1l3.6 2.8C6.6 7.3 9.1 5.4 12 5.4z"/></svg>`;
+/* 맨 위 안내 줄: 왼쪽에 지금 상태, 오른쪽에 로그인·가입 신청 단추 (연구회 자료실처럼) */
 function statusLine() {
-  if (APP.booting) return `<span class="status">노래상자를 여는 중</span>`;
-  if (!APP.live) return `<span class="status">체험 모드 · 예시 학교 기록</span>`;
-  const nat = NAT.failed ? " · 전국 현황을 못 불러옴" : "";
-  if (!APP.token) return `<span class="status">로그인하면 우리 반 기록을 남길 수 있어요${nat}</span>`;
-  if (APP.acc && APP.acc.status && APP.acc.status !== "O") return `<span class="status">${APP.acc.status === "none" ? "가입 신청을 해 주세요" : APP.acc.status === "wait" ? "가입 승인을 기다리는 중" : "가입이 승인되지 않았어요"}</span>`;
-  const who = APP.acc ? esc(APP.acc.name) + " 선생님" : "로그인 중";
-  return `<span class="status on">${who}${ME.configured ? " · " + esc(ME.name) : ""}${nat}</span>`;
+  const bar = (txt, btns, cls) => `<div class="topbar${cls ? " " + cls : ""}"><p>${txt}</p>${btns ? `<div class="btns">${btns}</div>` : ""}</div>`;
+  if (APP.booting) return bar("노래상자를 여는 중이에요");
+  if (!APP.live) return bar("<b>체험 모드</b>예요. 곡·가사·지은이·학교 기록은 모두 예시이고, 누른 도장·투표·가사는 이 기기에만 저장돼요.", "", "demo");
+  const nat = NAT.failed ? " (전국 현황을 불러오지 못했어요)" : "";
+  if (!APP.token) return bar(`선생님은 <b>구글 계정으로 로그인</b>하면 우리 반 도장·투표·릴레이·가사 올리기를 할 수 있어요. 동요샘 회원은 <b>회원방</b>에서 악보·음원도 받아요.${nat}`,
+    `<button class="btn ghost" data-glogin>로그인</button><button class="btn" data-glogin data-join>가입 신청</button>`);
+  if (!APP.acc) return bar("계정을 확인하는 중이에요");
+  const st = APP.acc.status;
+  if (st === "none") return bar(`<b>${esc(APP.acc.email)}</b> 계정으로 로그인했어요. 이름·학교·지역을 적어 가입 신청을 마쳐 주세요.`, `<button class="btn" data-tab="mine">가입 신청하기</button>`);
+  if (st === "wait") return bar(`<b>${esc(APP.acc.name)} 선생님</b>, 가입 신청을 받았어요. 운영진이 승인하면 쓸 수 있어요.`, `<button class="btn ghost" data-recheck>다시 확인하기</button>`);
+  if (st === "X") return bar("가입이 승인되지 않았어요. 운영진에게 문의해 주세요.", `<button class="btn ghost" data-logout>로그아웃</button>`);
+  return bar(`<b>${esc(APP.acc.name)} 선생님</b>${ME.configured ? " · " + esc(ME.name) : " · 우리 반을 먼저 만들어 주세요"}${APP.acc.member === "O" ? " · 동요샘 회원" : ""}${nat}`,
+    `${ME.configured ? "" : `<button class="btn" data-tab="mine">우리 반 만들기</button>`}${APP.acc.op ? `<button class="btn ghost" data-tab="op">운영진 메뉴</button>` : ""}<button class="btn ghost" data-logout>로그아웃</button>`, "on");
 }
 
 function renderSide() {
@@ -1107,9 +1122,7 @@ function render() {
   renderSide();
   const v = $("#view");
   $("#statusHost").innerHTML = statusLine();
-  $("#exampleNote").textContent = APP.live
-    ? "곡 목록은 동요샘 운영진이 관리해요. 동요샘 선생님은 가입 신청 후 승인을 받으면 반별로 기록을 남길 수 있어요."
-    : "체험 모드예요. 곡·가사·지은이·학교 기록은 모두 예시이고, 누른 도장·투표·가사는 이 기기에만 저장돼요.";
+  $("#exampleNote").textContent = "";
   if (APP.booting) { $("#exampleNote").textContent = ""; v.innerHTML = `<section><div class="booting" role="status"><span class="bnotes" aria-hidden="true"><i>♪</i><i>♫</i><i>♪</i></span><b>노래상자를 여는 중이에요</b><span class="meta">전국 교실의 노래 기록을 불러오고 있어요</span></div></section>`; return; }
   if (!SONGS.length && tab !== "op" && tab !== "room") { v.innerHTML = `<section><div class="empty">곡 목록이 비어 있어요. 운영진이 곡을 올리면 여기에 보여요.</div></section>`; return; }
   if (tab === "today") {
@@ -1259,7 +1272,7 @@ function renderMine(v) {
   } else if (!APP.token) {
     top = `<div class="card auth"><span class="eyebrow">선생님 로그인</span>
         <p style="margin:0">구글 계정으로 로그인해요. 처음이면 로그인한 뒤 이름·학교·지역을 적어 가입 신청을 하고, 운영진이 승인하면 우리 반 도장, 투표, 릴레이, 가사 올리기를 할 수 있어요.</p>
-        <div class="btns"><button class="btn glogin" data-glogin><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#4285F4" d="M22.5 12.3c0-.8-.1-1.5-.2-2.2H12v4.2h5.9a5 5 0 0 1-2.2 3.3v2.7h3.5c2.1-1.9 3.3-4.7 3.3-8z"/><path fill="#34A853" d="M12 23c3 0 5.5-1 7.3-2.7l-3.5-2.7c-1 .7-2.3 1.1-3.8 1.1-2.9 0-5.4-2-6.3-4.6H2.1v2.8A11 11 0 0 0 12 23z"/><path fill="#FBBC05" d="M5.7 14.1a6.6 6.6 0 0 1 0-4.2V7.1H2.1a11 11 0 0 0 0 9.8z"/><path fill="#EA4335" d="M12 5.4c1.6 0 3.1.6 4.2 1.7l3.1-3.1A11 11 0 0 0 2.1 7.1l3.6 2.8C6.6 7.3 9.1 5.4 12 5.4z"/></svg>구글로 로그인</button></div>
+        <div class="btns"><button class="btn glogin" data-glogin>${GICON}구글로 로그인</button></div>
         ${INAPP ? `<p class="meta" style="margin:0">지금은 ${IS_KAKAO ? "카카오톡" : "앱"} 안에서 열려 있어요. 구글이 이곳에서는 로그인을 막아서, 버튼을 누르면 다른 브라우저로 여는 방법을 알려 드려요.</p>` : `<p class="meta" style="margin:0">학교 컴퓨터처럼 여럿이 쓰는 기기라면 다 쓴 뒤 로그아웃해 주세요.</p>`}</div>`;
   } else if (!APP.acc || APP.acc.status !== "O") {
     const st = APP.acc ? APP.acc.status : "";
@@ -1490,6 +1503,7 @@ async function afterAuth(on) {
   if (on) {
     try { setAcc(await rpc("me", [APP.token])); } catch (e) { toast(e.message); }
     await loadNational();
+    if (APP.joinAfter || (APP.acc && APP.acc.status === "none" && tab !== "op")) { tab = "mine"; document.querySelectorAll("#tabs button").forEach(b => b.setAttribute("aria-selected", b.dataset.tab === tab)); } APP.joinAfter = false;
     toast(APP.acc && APP.acc.status === "O" ? (ME.configured ? "로그인했어요" : "로그인했어요. 우리 반을 먼저 만들어 주세요") : APP.acc && APP.acc.status === "none" ? "처음 오셨네요. 가입 신청을 해 주세요" : "로그인했어요");
   } else { APP.acc = null; setMe(null); }
   render();
@@ -1570,17 +1584,17 @@ document.addEventListener("click", e => {
   if (d.open) { openSong(+d.open); return; }
   if (d.chart) { chartMode = d.chart; render(); return; }
   if (d.period) { PERIOD = d.period; store.set("dys-period", PERIOD); render(); return; }
+  if (t.hasAttribute("data-glogin")) { APP.joinAfter = t.hasAttribute("data-join"); googleLogin(); return; }
+  if (t.hasAttribute("data-outside")) { openOutside(); return; }
+  if (t.hasAttribute("data-recheck")) { rpc("me", [APP.token]).then(m => { setAcc(m); render(); toast(tab === "op" ? (m.op ? "운영진으로 들어왔어요" : "아직 운영진 권한이 없어요") : m.status === "O" ? "승인됐어요. 우리 반을 만들어 주세요" : "아직 승인 전이에요"); }).catch(er => toast(er.message)); return; }
+  if (t.hasAttribute("data-logout")) { signOut("로그아웃했어요"); render(); return; }
   if (t.closest("[data-opzone], [data-roomzone], .playerbar, .mini-video")) return;
   if (d.karaoke) { openKaraoke(+d.karaoke); return; }
   if (d.media) { const h = $("#vHost"), s = songById(+d.id); if (!h || !s) return; const cur = ($("#vHost .vbox") || { dataset: {} }).dataset.kind, open = cur !== d.media;
     h.innerHTML = open ? mediaBox(s, d.media) : ""; syncMediaBtns(); if (open) h.scrollIntoView({ block: "nearest", behavior: "smooth" }); return; }
-  if (t.hasAttribute("data-glogin")) { googleLogin(); return; }
-  if (t.hasAttribute("data-outside")) { openOutside(); return; }
-  if (t.hasAttribute("data-recheck")) { rpc("me", [APP.token]).then(m => { setAcc(m); render(); toast(m.status === "O" ? "승인됐어요. 우리 반을 만들어 주세요" : "아직 승인 전이에요"); }).catch(er => toast(er.message)); return; }
   if (t.hasAttribute("data-signup")) { doSignup(); return; }
   if (d.auth) { APP.authView = d.auth; render(); return; }
   if (d.copy) { const v = d.copy; (navigator.clipboard ? navigator.clipboard.writeText(v) : Promise.reject()).then(() => toast("주소를 복사했어요"), () => toast(v)); return; }
-  if (t.hasAttribute("data-logout")) { signOut("로그아웃했어요"); render(); return; }
   if (d.cid) { APP.cid = d.cid; store.set("dys_cid", APP.cid); setMe(APP.acc.classes.find(c => c.cid === APP.cid)); render(); toast(`${ME.name}(으)로 바꿨어요`); return; }
   if (t.hasAttribute("data-addclass")) {
     const name = $("#newCls").value.trim(), region = $("#newRegion").value;
@@ -1615,10 +1629,13 @@ document.addEventListener("change", e => {
 });
 
 /* ---------- 운영진 메뉴 (점퍼스 관리자 메뉴처럼 왼쪽 탭, 좁은 화면에서는 위쪽 가로 탭) ---------- */
-const OP = { token: store.get("dys_op", ""), name: store.get("dys-opname", ""), data: null, sub: store.get("dys-opsub", "home"), lf: "", af: "", demo: false, url: "", tm: "", draft: null, dirty: false, day: "", weekend: store.get("dys-op-weekend", true) };
+const OP = { name: "", data: null, sub: store.get("dys-opsub", "home"), lf: "", af: "", demo: false, url: "", tm: "", draft: null, dirty: false, day: "", weekend: store.get("dys-op-weekend", true) };
+// 운영진은 따로 비밀번호 없이, 운영진 권한이 있는 구글 계정으로 로그인하면 들어와요
+store.del("dys_op"); store.del("dys-opname");
+Object.defineProperty(OP, "token", { get() { return APP.acc && APP.acc.op ? APP.token : ""; }, set() {} });
 const OP_SUBS = [
   ["home", "한눈에 보기", "할 일과 오늘 상황을 한 번에 봐요."],
-  ["accounts", "계정 승인", "가입을 신청한 선생님을 확인하고 승인해요. 비밀번호를 잊은 선생님께는 임시 비밀번호를 만들어 드려요."],
+  ["accounts", "계정 승인", "가입 신청과 동요샘 회원 신청을 확인하고, 운영진 권한을 주고 빼요."],
   ["songs", "곡 관리", "동요샘 회원 창작곡을 올리고 고쳐요. 작사·작곡 선생님께 공개 동의를 받은 곡만 올려 주세요."],
   ["today", "오늘의 동요 달력", "날마다 첫 화면에 나올 곡을 한 달씩 미리 정해 둬요. 정하지 않은 날은 계절 노래 가운데서 자동으로 골라요."],
   ["lyrics", "가사 확인", "반에서 올린 바꾼 가사를 보고 공개하거나 숨겨요."],
@@ -1673,7 +1690,8 @@ function opDemo(fn, args) {
     args[1].forEach(e => sc[e.date] = { song: e.song, note: e.note || "" }); d.schedule = sc; store.set("dys-demo-today", sc); log("오늘의 동요 달력 저장", m + " · " + args[1].length + "일"); }
   opApplySongs(); return d;
 }
-function opPost(fn, args) {
+function opPost(fn, args) { return rpc(fn, args); }
+function opPostOld(fn, args) {
   return fetch(OP.url, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify({ fn, args }), redirect: "follow" })
     .then(r => { if (!r.ok) throw new Error("서버 응답 오류 (" + r.status + ")"); return r.json(); })
     .then(j => { if (!j.ok) throw new Error(j.error || "요청 실패"); return j.result; });
@@ -1733,11 +1751,13 @@ function renderOp(v) {
   if (!APP.cfgLoaded) { v.innerHTML = `<section data-opzone><div class="empty">운영진 메뉴를 여는 중이에요</div></section>`; return; }
   if (!OP.url && !OP.demo) OP.demo = true;
   if (!OP.demo && !OP.token) {
-    v.innerHTML = `<section data-opzone><div class="card op-login"><span class="eyebrow">운영진 로그인</span>
-      <p class="meta" style="margin:0">계정 승인, 곡 등록, 오늘의 동요, 가사 공개를 관리하는 곳이에요. 운영진 비밀번호는 함께 쓰고, 이름은 누가 처리했는지 기록에 남기려고 받아요.</p>
-      <div class="form2"><input type="text" id="opName" value="${esc(OP.name)}" placeholder="운영진 이름 (예: 김동요)" aria-label="운영진 이름" autocomplete="nickname"><input type="password" id="opPw" placeholder="운영진 비밀번호" aria-label="운영진 비밀번호" autocomplete="current-password"></div>
-      <div class="btns"><button class="btn" data-oplogin>들어가기</button><button class="btn ghost" data-tab="today">노래상자로 돌아가기</button></div></div></section>`;
-    ["#opPw", "#opName"].forEach(id => $(id).addEventListener("keydown", e => { if (e.key === "Enter") opLogin(); }));
+    v.innerHTML = `<section data-opzone><div class="card op-login"><span class="eyebrow">운영진 메뉴</span>
+      ${!APP.auth && APP.live ? `<p class="meta" style="margin:0">로그인을 준비하는 중이에요.</p>`
+      : !APP.token ? `<p style="margin:0">운영진 권한이 있는 구글 계정으로 로그인하면 들어와요. 계정 승인, 곡 등록, 오늘의 동요, 가사 공개, 회원방을 관리하는 곳이에요.</p>
+      <div class="btns"><button class="btn glogin" data-glogin>${GICON}구글로 로그인</button><button class="btn ghost" data-tab="today">노래상자로 돌아가기</button></div>`
+      : `<p style="margin:0"><b>${esc((APP.acc && APP.acc.email) || "")}</b> 계정에는 운영진 권한이 없어요.</p>
+      <p class="meta" style="margin:0">운영진에게 '운영진 권한'을 받으면 들어올 수 있어요. 노래상자에 가입 신청을 하고 승인을 받은 계정이어야 해요.</p>
+      <div class="btns"><button class="btn ghost" data-recheck>다시 확인하기</button><button class="btn ghost" data-logout>다른 계정으로 로그인</button><button class="btn ghost" data-tab="today">노래상자로 돌아가기</button></div>`}</div></section>`;
     return;
   }
   if (!OP.data) { v.innerHTML = `<section data-opzone><div class="empty">운영진 자료를 불러오는 중이에요</div></section>`; opEnsure(); return; }
@@ -1831,15 +1851,16 @@ function renderOp(v) {
       <div class="btns"><button class="btn" data-oprelay>저장</button></div></div>`;
   }
   if (OP.sub === "accounts") {
-    const acc = d.accounts || [], cnt = { "": acc.filter(x => !x.status).length, M: acc.filter(x => x.member === "신청" && x.status !== "X").length, MO: acc.filter(x => x.member === "O").length, O: acc.filter(x => x.status === "O").length, X: acc.filter(x => x.status === "X").length };
-    const list = acc.filter(x => OP.af === "M" ? x.member === "신청" && x.status !== "X" : OP.af === "MO" ? x.member === "O" : x.status === OP.af).sort((a, b) => String(b.at).localeCompare(String(a.at)));
+    const acc = d.accounts || [], cnt = { "": acc.filter(x => !x.status).length, M: acc.filter(x => x.member === "신청" && x.status !== "X").length, R: acc.filter(x => x.role === "운영진").length, MO: acc.filter(x => x.member === "O").length, O: acc.filter(x => x.status === "O").length, X: acc.filter(x => x.status === "X").length };
+    const list = acc.filter(x => OP.af === "M" ? x.member === "신청" && x.status !== "X" : OP.af === "MO" ? x.member === "O" : OP.af === "R" ? x.role === "운영진" : x.status === OP.af).sort((a, b) => String(b.at).localeCompare(String(a.at)));
     const nCls = id => (d.classes || []).filter(c => c.owner === id).length;
     body = `${d.tempPw ? `<div class="card temp"><span class="eyebrow">임시 비밀번호</span><p style="margin:0">${esc(d.tempPw.id)} 선생님의 임시 비밀번호는 <b class="tpw">${esc(d.tempPw.pw)}</b> 예요. 선생님께 알려 드리고, 로그인 뒤 선생님 메뉴에서 바꾸시라고 안내해 주세요. 이 창을 닫으면 다시 볼 수 없어요.</p><div class="btns"><button class="btn ghost" data-copy="${esc(d.tempPw.pw)}">복사</button></div></div>` : ""}
+      ${OP.af === "R" && d.owner ? `<div class="card"><span class="eyebrow">운영진 권한</span><p class="meta" style="margin:0"><b>${esc(d.owner)}</b>(동요샘 관리 계정)은 늘 운영진이에요. 다른 선생님은 가입 승인을 받은 뒤 '승인됨' 칸에서 [운영진 권한 주기]를 누르면 운영진이 돼요. 바뀐 권한은 5분 안에 반영돼요.</p></div>` : ""}
       ${(OP.af === "M" || OP.af === "MO") && acc.some(x => x.member === "O" && x.reg) ? `<div class="card"><span class="eyebrow">도교육청 교과연구회 등록 명단</span><p class="meta" style="margin:0">동요샘 회원으로 승인했고 명단에 동의한 선생님 ${acc.filter(x => x.member === "O" && x.reg).length}명을 연번·이름·직위·소속·전화번호 표로 복사해요. 한글이나 엑셀 표에 붙여 넣으세요.</p><div class="btns"><button class="btn ghost" data-roster>등록 명단 복사</button></div></div>` : ""}
-      <div class="chips">${[["", "가입 승인 기다림"], ["M", "회원방 신청"], ["MO", "동요샘 회원"], ["O", "승인됨"], ["X", "거절"]].map(([k, n]) => `<button class="chip" data-opaf="${k}" aria-pressed="${OP.af === k}">${n} ${cnt[k]}</button>`).join("")}</div>
+      <div class="chips">${[["", "가입 승인 기다림"], ["M", "회원방 신청"], ["MO", "동요샘 회원"], ["R", "운영진"], ["O", "승인됨"], ["X", "거절"]].map(([k, n]) => `<button class="chip" data-opaf="${k}" aria-pressed="${OP.af === k}">${n} ${cnt[k]}</button>`).join("")}</div>
       ${list.length ? `<div class="list">${list.map(x => `<div class="oprow acc"><span class="key">${esc(x.region)}</span>
-        <span class="min"><b>${esc(x.name)} 선생님 · ${esc(x.school)}${x.member === "O" ? ` <span class="memb">동요샘 회원</span>` : x.member === "신청" ? ` <span class="memb wait">회원방 신청</span>` : ""}</b><small class="meta">${esc(x.id)} · 신청 ${esc(x.at)}${x.pos ? ` · ${esc(x.pos)}` : ""}${x.phone ? ` · ${esc(x.phone)}` : ""}${x.member && x.member !== "X" && x.pos ? (x.reg ? " · 명단 동의" : " · 명단 동의 안 함") : ""}${x.last ? " · 마지막 로그인 " + esc(x.last) : ""}${x.status === "O" ? " · 반 " + nCls(x.id) + "개" : ""}</small></span>
-        <span class="btns">${x.status !== "O" ? `<button class="vote on" data-opacc="${esc(x.id)}" data-st="O">승인</button>` : ""}${x.status !== "X" ? `<button class="vote" data-opacc="${esc(x.id)}" data-st="X">${x.status === "O" ? "막기" : "거절"}</button>` : ""}${x.status === "X" ? `<button class="vote" data-opacc="${esc(x.id)}" data-st="">다시 검토</button>` : ""}${x.status !== "X" ? (x.member === "O" ? `<button class="vote" data-opmem="${esc(x.id)}" data-st="">회원에서 빼기</button>` : `<button class="vote${x.member === "신청" ? " on" : ""}" data-opmem="${esc(x.id)}" data-st="O">동요샘 회원 승인</button>`) : ""}${x.member === "신청" ? `<button class="vote" data-opmem="${esc(x.id)}" data-st="X">회원 아님</button>` : ""}</span></div>`).join("")}</div>`
+        <span class="min"><b>${esc(x.name)} 선생님 · ${esc(x.school)}${x.role === "운영진" ? ` <span class="memb big">운영진</span>` : ""}${x.member === "O" ? ` <span class="memb">동요샘 회원</span>` : x.member === "신청" ? ` <span class="memb wait">회원방 신청</span>` : ""}</b><small class="meta">${esc(x.id)} · 신청 ${esc(x.at)}${x.pos ? ` · ${esc(x.pos)}` : ""}${x.phone ? ` · ${esc(x.phone)}` : ""}${x.member && x.member !== "X" && x.pos ? (x.reg ? " · 명단 동의" : " · 명단 동의 안 함") : ""}${x.last ? " · 마지막 로그인 " + esc(x.last) : ""}${x.status === "O" ? " · 반 " + nCls(x.id) + "개" : ""}</small></span>
+        <span class="btns">${x.status !== "O" ? `<button class="vote on" data-opacc="${esc(x.id)}" data-st="O">승인</button>` : ""}${x.status !== "X" ? `<button class="vote" data-opacc="${esc(x.id)}" data-st="X">${x.status === "O" ? "막기" : "거절"}</button>` : ""}${x.status === "X" ? `<button class="vote" data-opacc="${esc(x.id)}" data-st="">다시 검토</button>` : ""}${x.status !== "X" ? (x.member === "O" ? `<button class="vote" data-opmem="${esc(x.id)}" data-st="">회원에서 빼기</button>` : `<button class="vote${x.member === "신청" ? " on" : ""}" data-opmem="${esc(x.id)}" data-st="O">동요샘 회원 승인</button>`) : ""}${x.member === "신청" ? `<button class="vote" data-opmem="${esc(x.id)}" data-st="X">회원 아님</button>` : ""}${x.status === "O" ? (x.role === "운영진" ? `<button class="vote" data-oprole="${esc(x.id)}" data-role="">운영진 권한 빼기</button>` : `<button class="vote" data-oprole="${esc(x.id)}" data-role="운영진">운영진 권한 주기</button>`) : ""}</span></div>`).join("")}</div>`
         : `<div class="empty">${OP.af === "" ? "승인을 기다리는 신청이 없어요" : "여기에 해당하는 계정이 없어요"}</div>`}`;
   }
   if (OP.sub === "classes") {
@@ -1876,7 +1897,6 @@ function renderOp(v) {
         ${OP_SUBS.map(([k, n]) => `<button type="button" data-opsub="${k}" class="${OP.sub === k ? "on" : ""}" aria-current="${OP.sub === k ? "page" : "false"}"><span class="ico"></span>${n}${badge[k] ? `<span class="cnt">${badge[k]}</span>` : ""}${k === "today" && !store.get("dys-seen-today", false) ? `<span class="new-dot">NEW</span>` : ""}</button>`).join("")}
         <div class="nav-sep"></div>
         <button type="button" class="nav-link" data-tab="today">노래상자로 →</button>
-        ${OP.demo ? "" : `<button type="button" class="nav-link" data-oplogout>운영진 메뉴에서 나가기</button>`}
       </div>
       <div class="admin-content">
         <h2 class="op-title">${sub[1]}</h2><p class="sub">${sub[2]}</p>
@@ -1972,8 +1992,6 @@ function confirmLeave() { if (OP.warned) return true; OP.warned = true; toast("�
 document.addEventListener("click", e => {
   const t = e.target.closest("button"); if (!t || !t.closest("[data-opzone]")) return;
   const d = t.dataset;
-  if (t.hasAttribute("data-oplogin")) { opLogin(); return; }
-  if (t.hasAttribute("data-oplogout")) { opPost("opLogout", [OP.token]).catch(() => {}); OP.token = ""; OP.data = null; store.del("dys_op"); render(); toast("운영진 메뉴에서 나왔어요"); return; }
   if (d.opsub) { opGoSub(d.opsub); return; }
   if (d.oplf !== undefined) { OP.lf = d.oplf; render(); return; }
   if (d.opedit !== undefined) { openSongEditor(+d.opedit); return; }
@@ -2013,6 +2031,7 @@ document.addEventListener("click", e => {
   if (d.opdelask) { const z = t.closest(".del-zone"); t.hidden = true; z.querySelector("[data-opdel]").hidden = false; toast("한 번 더 누르면 지워져요. 되돌릴 수 없어요"); return; }
   if (d.opdel) { opCall("opDeleteSong", [+d.opdel], "곡을 지웠어요").then(ok => { if (ok) $("#sheetHost").innerHTML = ""; }); return; }
   if (d.opaf !== undefined) { OP.af = d.opaf; if (OP.data) delete OP.data.tempPw; render(); return; }
+  if (d.oprole !== undefined) { if (d.oprole === (OP.data.myEmail || "") && !d.role && !confirmTwice(t, "내 권한이에요. 한 번 더 누르면 빼요")) return; opCall("opRole", [d.oprole, d.role], d.role ? "운영진 권한을 줬어요" : "운영진 권한을 뺐어요"); return; }
   if (d.opmem) { opCall("opMember", [d.opmem, d.st], d.st === "O" ? "동요샘 회원으로 승인했어요. 회원방이 열려요" : d.st === "X" ? "회원방 신청을 받지 않았어요" : "회원에서 뺐어요"); return; }
   if (d.opacc) { opCall("opAccount", [d.opacc, d.st], d.st === "O" ? "승인했어요" : d.st === "X" ? "거절했어요" : "다시 검토로 돌렸어요"); return; }
   if (t.hasAttribute("data-roster")) { const list = (OP.data.accounts || []).filter(x => x.member === "O" && x.reg); const txt = ["연번\t이름\t직위\t소속\t전화번호"].concat(list.map((x, i) => `${i + 1}\t${x.name}\t${x.pos}\t${x.school}\t${x.phone}`)).join("\n");
