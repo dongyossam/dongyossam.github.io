@@ -249,20 +249,17 @@ textarea.plain{font-family:var(--body);font-size:15px;line-height:1.6;min-height
   .wrap{max-width:1600px}
   .scene-in{height:190px}.scene .deco{height:190px;width:520px}.scene .hills{height:64px}
   .scene .title{top:34px}
-  .layout{display:grid;grid-template-columns:minmax(220px,1fr) minmax(0,4fr);gap:28px;align-items:start;margin-top:18px}
-  .sidebar{display:grid;gap:14px;position:sticky;top:calc(16px + env(safe-area-inset-top,0px))}
+  .layout{display:block;margin-top:14px}
   .sidebar #statusHost .status{margin-top:0}
   nav{position:static;flex-direction:column;overflow:visible;padding:14px;background:var(--paper);border:2px solid var(--line);border-radius:var(--wob);gap:6px}
   nav::before{content:"메뉴";font-family:var(--body);font-weight:700;font-size:13px;color:var(--muted);padding:0 6px 4px}
   nav button{text-align:left;font-size:16px;padding:10px 16px;border-radius:14px}
-  #sideExtra{display:grid;gap:14px}
   .side-card{padding:16px;gap:8px}
   .side-name{font-family:var(--display);font-weight:400;font-size:20px;line-height:1.3}
   .cafe-side{grid-template-columns:auto minmax(0,1fr);padding:12px}
   .cafe-side b{font-size:18px}
   .content{min-width:0}
   .content .example{margin-top:0}
-  .content .split .cafe{display:none}
   .split{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:24px;align-items:start}
   .split>.col{display:grid;gap:16px;min-width:0;align-content:start}
   .split>.col>h2:first-child{margin-top:0}
@@ -674,6 +671,14 @@ body.kara-on .mini-video{z-index:41;top:max(56px,env(safe-area-inset-top));botto
 /* 모바일: 제목을 해를 뺀 칸 가운데로, 위아래 여백 맞춤 */
 @media (max-width:699px){.scene .title{top:26px;right:min(21vw,90px)}}
 
+.btn.glogin{display:inline-flex;align-items:center;gap:8px;background:var(--paper);color:var(--ink);border-color:var(--line)}
+.btn.glogin svg{width:18px;height:18px}
+.memfields{display:grid;gap:10px;border:2px dashed var(--line);border-radius:14px;padding:12px}
+.priv summary{cursor:pointer;font-weight:700;font-size:14px;color:var(--muted)}
+.priv table{border-collapse:collapse;font-size:13px;margin:8px 0;width:100%}
+.priv th,.priv td{border:1px solid var(--line);padding:5px 8px;text-align:left;vertical-align:top}
+.priv th{white-space:nowrap;background:var(--bg)}
+.priv p{font-size:13px;margin:4px 0}
 /* 동요샘 회원방 */
 .room{display:grid;gap:14px}
 .room-head{display:flex;align-items:flex-end;justify-content:space-between;gap:10px;flex-wrap:wrap}
@@ -837,7 +842,7 @@ new URLSearchParams(location.search).forEach(function (v, k) { APP.q[k] = v; });
 const store = { get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d } catch (e) { return d } }, set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)) } catch (e) {} }, del(k) { try { localStorage.removeItem(k) } catch (e) {} } };
 let PERIOD = store.get("dys-period", "month") === "year" ? "year" : "month";
 function soundOn() { return store.get("dys-sound", true); }
-APP.token = store.get("dys_user", ""); APP.cid = store.get("dys_cid", "");
+store.del("dys_user"); APP.cid = store.get("dys_cid", "");
 
 /* ---------- 예시 곡 (곡 목록이 수집기에서 오기 전·체험 모드용) ---------- */
 const DEMO_SONGS = [
@@ -951,6 +956,7 @@ function setMe(c) {
 }
 /* 서버가 돌려준 내 계정·반 목록 반영 (고른 반 기억) */
 function setAcc(me) {
+  if (me && !me.classes) me.classes = [];
   APP.acc = me; if (me && me.month) MONTH = me.month;
   const list = (me && me.classes) || [];
   if (me && me.newCid) APP.cid = me.newCid;
@@ -958,7 +964,7 @@ function setAcc(me) {
   store.set("dys_cid", APP.cid);
   setMe(list.find(c => c.cid === APP.cid));
 }
-function signOut(msg) { APP.token = ""; APP.acc = null; if (typeof ROOM !== "undefined") { ROOM.data = null; ROOM.chat = []; } store.del("dys_user"); setMe(null); if (msg) toast(msg); }
+function signOut(msg) { if (APP.auth) { try { firebase.auth().signOut(); } catch (e) {} } APP.token = ""; APP.acc = null; if (typeof ROOM !== "undefined") { ROOM.data = null; ROOM.chat = []; } store.del("dys_user"); setMe(null); if (msg) toast(msg); }
 function emptyRegions() { const r = {}; REGIONS.forEach(([n]) => r[n] = { stamps: 0, classes: 0 }); return r; }
 /* 체험 모드(예시 학교 포함) 또는 수집기가 아직 없을 때(우리 반만)의 전국 현황 */
 function localNational(withDemo) {
@@ -983,7 +989,17 @@ function songsFromCollector(list) {
 }
 
 /* ---------- 서버와 주고받기 ---------- */
-function rpc(fn, args, retried) {
+/* 구글 로그인 표는 한 시간마다 새로 받아요. 보내기 전에 새 표로 바꿔 끼워요. */
+async function freshToken() {
+  try { const u = APP.auth && firebase.auth().currentUser; if (!u) return null; const t = await u.getIdToken(); if (t && t !== APP.token) { const old = APP.token; APP.token = t; return [old, t]; } } catch (e) {}
+  return null;
+}
+async function rpc(fn, args, retried) {
+  const sw = await freshToken();
+  if (sw && sw[0] && args) args = args.map(a => a === sw[0] ? sw[1] : a);
+  return rpcRaw(fn, args, retried);
+}
+function rpcRaw(fn, args, retried) {
   return fetch(APP.server, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify({ fn: fn, args: args || [] }), redirect: "follow" })
     .then(r => { if (!r.ok) { const e = new Error("서버 응답 오류 (" + r.status + ")"); e.retry = true; throw e; } return r.json(); }, err => { err.retry = true; throw err; })
     .then(j => { if (!j.ok) throw new Error(j.error || "요청 실패"); return j.result; })
@@ -1057,6 +1073,7 @@ function statusLine() {
   if (!APP.live) return `<span class="status">체험 모드 · 예시 학교 기록</span>`;
   const nat = NAT.failed ? " · 전국 현황을 못 불러옴" : "";
   if (!APP.token) return `<span class="status">로그인하면 우리 반 기록을 남길 수 있어요${nat}</span>`;
+  if (APP.acc && APP.acc.status && APP.acc.status !== "O") return `<span class="status">${APP.acc.status === "none" ? "가입 신청을 해 주세요" : APP.acc.status === "wait" ? "가입 승인을 기다리는 중" : "가입이 승인되지 않았어요"}</span>`;
   const who = APP.acc ? esc(APP.acc.name) + " 선생님" : "로그인 중";
   return `<span class="status on">${who}${ME.configured ? " · " + esc(ME.name) : ""}${nat}</span>`;
 }
@@ -1238,23 +1255,25 @@ function renderMine(v) {
       <div class="card"><span class="eyebrow">체험 모드</span>
         <p style="margin:0">지금은 예시 기록으로 둘러보는 중이에요. 동요샘 서버가 열리면 이 자리에서 선생님 가입 신청과 로그인을 할 수 있어요.</p></div>`;
   } else if (!APP.token) {
-    const contact = APP.contact ? `<span class="copy-mail">${esc(APP.contact)}</span>` : "운영진";
-    top = APP.authView === "signup" ? `<div class="card auth"><span class="eyebrow">가입 신청</span>
-        <p class="meta" style="margin:0">동요샘 운영진이 확인하고 승인하면 로그인할 수 있어요.</p>
-        <label class="fld"><span class="label">아이디 (영어 소문자·숫자 4~20자)</span><input type="text" id="suId" autocomplete="username" autocapitalize="off"></label>
-        <label class="fld"><span class="label">비밀번호 (6자 이상)</span><input type="password" id="suPw" autocomplete="new-password"></label>
-        <div class="form2"><label class="fld"><span class="label">선생님 이름</span><input type="text" id="suName" placeholder="예: 김햇살"></label>
-          <label class="fld"><span class="label">학교</span><input type="text" id="suSchool" placeholder="예: 햇살초등학교"></label></div>
+    top = `<div class="card auth"><span class="eyebrow">선생님 로그인</span>
+        <p style="margin:0">구글 계정으로 로그인해요. 처음이면 로그인한 뒤 이름·학교·지역을 적어 가입 신청을 하고, 운영진이 승인하면 우리 반 도장, 투표, 릴레이, 가사 올리기를 할 수 있어요.</p>
+        <div class="btns"><button class="btn glogin" data-glogin><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#4285F4" d="M22.5 12.3c0-.8-.1-1.5-.2-2.2H12v4.2h5.9a5 5 0 0 1-2.2 3.3v2.7h3.5c2.1-1.9 3.3-4.7 3.3-8z"/><path fill="#34A853" d="M12 23c3 0 5.5-1 7.3-2.7l-3.5-2.7c-1 .7-2.3 1.1-3.8 1.1-2.9 0-5.4-2-6.3-4.6H2.1v2.8A11 11 0 0 0 12 23z"/><path fill="#FBBC05" d="M5.7 14.1a6.6 6.6 0 0 1 0-4.2V7.1H2.1a11 11 0 0 0 0 9.8z"/><path fill="#EA4335" d="M12 5.4c1.6 0 3.1.6 4.2 1.7l3.1-3.1A11 11 0 0 0 2.1 7.1l3.6 2.8C6.6 7.3 9.1 5.4 12 5.4z"/></svg>구글로 로그인</button></div>
+        ${INAPP ? `<p class="meta" style="margin:0">지금은 ${IS_KAKAO ? "카카오톡" : "앱"} 안에서 열려 있어요. 구글이 이곳에서는 로그인을 막아서, 버튼을 누르면 다른 브라우저로 여는 방법을 알려 드려요.</p>` : `<p class="meta" style="margin:0">학교 컴퓨터처럼 여럿이 쓰는 기기라면 다 쓴 뒤 로그아웃해 주세요.</p>`}</div>`;
+  } else if (!APP.acc || APP.acc.status !== "O") {
+    const st = APP.acc ? APP.acc.status : "";
+    top = !APP.acc ? `<div class="card"><span class="meta">계정을 확인하는 중이에요</span></div>`
+      : st === "none" ? `<div class="card auth"><span class="eyebrow">가입 신청</span>
+        <p class="meta" style="margin:0">${esc(APP.acc.email)} 계정으로 신청해요. 동요샘 운영진이 확인하고 승인하면 쓸 수 있어요.</p>
+        <div class="form2"><label class="fld"><span class="label">선생님 이름</span><input type="text" id="suName" maxlength="20" placeholder="예: 김햇살"></label>
+          <label class="fld"><span class="label">학교</span><input type="text" id="suSchool" maxlength="30" placeholder="예: 햇살초등학교"></label></div>
         <label class="fld"><span class="label">지역</span><select id="suRegion">${regionOpts("")}</select></label>
-        <label class="check"><input type="checkbox" id="suMember"> 동요샘 회원이에요 <small class="meta">(회원방도 함께 신청해요. 회원이 아니어도 노래상자는 그대로 쓸 수 있어요)</small></label>
-        <div class="btns"><button class="btn" data-signup>가입 신청</button><button class="btn ghost" data-auth="login">로그인으로 돌아가기</button></div></div>`
-      : `<div class="card auth"><span class="eyebrow">선생님 로그인</span>
-        <p class="meta" style="margin:0">로그인하면 우리 반 도장, 투표, 릴레이, 가사 올리기를 할 수 있어요.</p>
-        <label class="fld"><span class="label">아이디</span><input type="text" id="liId" autocomplete="username" autocapitalize="off"></label>
-        <label class="fld"><span class="label">비밀번호</span><input type="password" id="liPw" autocomplete="current-password"></label>
-        <label class="check"><input type="checkbox" id="liKeep"${store.get("dys-keep", true) ? " checked" : ""}> 이 기기에서 30일 동안 로그인 유지 <small class="meta">(여럿이 함께 쓰는 컴퓨터라면 끄세요)</small></label>
-        <div class="btns"><button class="btn" data-login>로그인</button><button class="btn ghost" data-auth="signup">처음이에요 · 가입 신청</button></div>
-        <p class="meta" style="margin:0">비밀번호를 잊었다면 ${contact}${APP.contact ? "로" : "에게"} 아이디를 적어 요청해 주세요. 임시 비밀번호를 보내 드려요.${APP.contact ? ` <button class="more" data-copy="${esc(APP.contact)}">주소 복사</button>` : ""}</p></div>`;
+        <label class="check"><input type="checkbox" id="suMember" data-memtoggle="su"> 동요샘 회원이에요 <small class="meta">(회원방도 함께 신청해요. 회원이 아니어도 노래상자는 그대로 쓸 수 있어요)</small></label>
+        <div id="suMem" hidden>${memberFields("su")}</div>
+        <div class="btns"><button class="btn" data-signup>가입 신청</button><button class="btn ghost" data-logout>다른 계정으로 로그인</button></div></div>`
+      : `<div class="card"><span class="eyebrow">${st === "wait" ? "가입 승인을 기다리는 중" : "가입이 승인되지 않았어요"}</span>
+        <p style="margin:0">${st === "wait" ? `${esc(APP.acc.name)} 선생님, 가입 신청을 받았어요. 운영진이 확인하고 승인하면 이 화면에서 우리 반을 만들 수 있어요.${APP.acc.member === "신청" ? " 동요샘 회원방 신청도 함께 확인해요." : ""}` : "운영진에게 문의해 주세요."}</p>
+        <p class="meta" style="margin:0">${esc(APP.acc.email)}</p>
+        <div class="btns"><button class="btn ghost" data-recheck>다시 확인하기</button><button class="btn ghost" data-logout>로그아웃</button></div></div>`;
   } else {
     const acc = APP.acc || { name: "", school: "", classes: [] };
     top = `<div class="card">
@@ -1283,10 +1302,9 @@ function renderMine(v) {
       <h2>노래 탐험 지도</h2>
       <div class="card">${quests().map(q => `<div class="quest${q.have >= q.need ? " cleared" : ""}"><span class="ok"></span><span>${esc(q.name)}</span><span class="meta num">${q.have}/${q.need}</span></div>`).join("")}</div>
       ${mineLyrics ? `<h2>우리 반이 올린 가사</h2><div class="card">${mineLyrics}</div>` : ""}
-      ${APP.live && APP.token ? `<h2>선생님 메뉴</h2><div class="card">
-        <span class="label">비밀번호 바꾸기</span>
-        <div class="form2"><input type="password" id="oldPw" placeholder="지금 비밀번호" aria-label="지금 비밀번호" autocomplete="current-password"><input type="password" id="newPw" placeholder="새 비밀번호 (6자 이상)" aria-label="새 비밀번호" autocomplete="new-password"></div>
-        <div class="btns"><button class="btn ghost" data-pw>비밀번호 바꾸기</button><button class="btn ghost" data-logout>로그아웃</button></div>
+      ${APP.live && APP.token && APP.acc && APP.acc.status === "O" ? `<h2>선생님 메뉴</h2><div class="card">
+        <span class="meta">${esc((APP.acc && APP.acc.email) || "")} 계정으로 로그인했어요${APP.acc && APP.acc.member === "O" ? " · 동요샘 회원" : APP.acc && APP.acc.member === "신청" ? " · 회원방 신청함" : ""}</span>
+        <div class="btns"><button class="btn ghost" data-logout>로그아웃</button></div>
       </div>` : ""}
     </div></section>`;
   if (!APP.live) {
@@ -1294,7 +1312,6 @@ function renderMine(v) {
     $("#meName").addEventListener("change", () => { upd(); toast("우리 반 이름을 바꿨어요"); });
     $("#meRegion").addEventListener("change", () => { upd(); toast(`지역을 ${ME.region}(으)로 바꿨어요`); render(); });
   }
-  const pw = $("#liPw"); if (pw) pw.addEventListener("keydown", e => { if (e.key === "Enter") doLogin(); });
 }
 
 /* 유튜브 주소에서 영상 번호 꺼내기 */
@@ -1431,32 +1448,97 @@ document.addEventListener("keydown", e => {
 function refreshSheet() { const sh = $(".sheet"); if (sh) openSong(+sh.dataset.song); }
 
 /* ---------- 누르기 ---------- */
-async function doLogin() {
-  const id = ($("#liId") || {}).value || "", pw = ($("#liPw") || {}).value || "";
-  if (!id.trim() || !pw) { toast("아이디와 비밀번호를 적어 주세요"); return; }
-  if (APP.busy) return; APP.busy = true; document.body.classList.add("busy");
-  const keep = !!($("#liKeep") && $("#liKeep").checked); store.set("dys-keep", keep);
-  try { const r = await rpc("login", [id.trim(), pw, keep]);
-    if (!r.ok) { toast(r.message); return; }
-    APP.token = r.token; store.set("dys_user", r.token); setAcc(r.me); ROOM.data = null; await loadNational();
-    toast(ME.configured ? "로그인했어요" : "로그인했어요. 우리 반을 먼저 만들어 주세요"); render();
-  } catch (e) { toast(e.message); }
-  finally { APP.busy = false; document.body.classList.remove("busy"); }
+/* 구글 로그인 · 카카오톡 같은 앱 안 브라우저에서는 구글이 로그인을 막아서 바깥 브라우저로 */
+const UA = navigator.userAgent || "";
+const INAPP = /KAKAOTALK|NAVER\(inapp|Instagram|FBAN|FBAV|Line\/|BAND\/|DaumApps|everytimeApp|; wv\)/i.test(UA);
+const IS_IOS = /iPhone|iPad|iPod/i.test(UA) || (/Macintosh/.test(UA) && navigator.maxTouchPoints > 1), IS_KAKAO = /KAKAOTALK/i.test(UA);
+function openOutside() {
+  const url = location.href;
+  if (IS_KAKAO) { location.href = "kakaotalk://web/openExternal?url=" + encodeURIComponent(url); return; }
+  if (!IS_IOS) { location.href = "intent://" + url.replace(/^https?:\/\//, "") + "#Intent;scheme=https;package=com.android.chrome;end"; return; }
+}
+function inappHelp() {
+  $("#sheetHost").innerHTML = `<div class="scrim" data-close></div><div class="sheet" role="dialog" aria-modal="true" aria-label="다른 브라우저로 열기"><div class="in">
+    <button class="btn ghost close" data-close>닫기</button><h3>다른 브라우저로 열어 주세요</h3>
+    <p style="margin:0">지금은 ${IS_KAKAO ? "카카오톡" : "앱"} 안의 브라우저로 열려 있어요. 구글이 이런 곳에서는 로그인을 막고 있어서 ${IS_IOS ? "사파리" : "크롬"}에서 열어야 로그인할 수 있어요.</p>
+    <div class="install-steps">${(IS_IOS ? (IS_KAKAO ? [["오른쪽 아래 ··· 누르기", "카카오톡 화면 오른쪽 아래의 ··· 또는 공유 단추를 눌러요."], ["Safari로 열기", "'Safari로 열기'(다른 브라우저로 열기)를 눌러요."]] : [["··· 메뉴 누르기", "화면의 ··· 메뉴를 눌러요."], ["Safari로 열기", "'Safari로 열기' 또는 '브라우저로 열기'를 눌러요."]])
+      : [["오른쪽 위 ⋮ 누르기", "화면 오른쪽 위의 ⋮ 메뉴를 눌러요."], ["다른 브라우저로 열기", "'다른 브라우저로 열기'를 누르고 Chrome을 골라요."]]).map(([t, d], i) => `<div class="card"><span class="eyebrow">${i + 1}. ${t}</span><span>${d}</span></div>`).join("")}</div>
+    <div class="btns">${!IS_IOS || IS_KAKAO ? `<button class="btn" data-outside>${IS_IOS ? "Safari로 열기" : "Chrome으로 열기"}</button>` : ""}<button class="btn ghost" data-copy="${esc(location.href)}">주소 복사</button></div>
+    <p class="meta" style="margin:0">QR로 들어오거나 바탕화면·홈 화면의 '동요샘' 아이콘으로 열면 이 문제가 없어요.</p></div></div>`;
+}
+async function authInit() {
+  if (!NATCFG.firebase || !NATCFG.firebase.apiKey) return;
+  const g = "https://www.gstatic.com/firebasejs/10.12.2/";
+  await loadScript(g + "firebase-app-compat.js", () => window.firebase && firebase.initializeApp);
+  await loadScript(g + "firebase-auth-compat.js", () => window.firebase && firebase.auth);
+  if (!firebase.apps.length) firebase.initializeApp(NATCFG.firebase);
+  APP.auth = true;
+  await new Promise(ok => {
+    let first = true;
+    firebase.auth().onAuthStateChanged(async u => {
+      const was = APP.token;
+      APP.token = u ? await u.getIdToken() : "";
+      if (first) { first = false; ok(); return; }
+      if (!!was !== !!APP.token) afterAuth(!!APP.token);
+    });
+  });
+}
+async function afterAuth(on) {
+  ROOM.data = null; ROOM.chat = [];
+  if (on) {
+    try { setAcc(await rpc("me", [APP.token])); } catch (e) { toast(e.message); }
+    await loadNational();
+    toast(APP.acc && APP.acc.status === "O" ? (ME.configured ? "로그인했어요" : "로그인했어요. 우리 반을 먼저 만들어 주세요") : APP.acc && APP.acc.status === "none" ? "처음 오셨네요. 가입 신청을 해 주세요" : "로그인했어요");
+  } else { APP.acc = null; setMe(null); }
+  render();
+}
+async function googleLogin() {
+  if (!APP.live) { toast("체험 모드에서는 로그인하지 않아도 돼요"); return; }
+  if (!APP.auth) { toast("로그인을 준비하는 중이에요. 잠시 뒤 다시 눌러 주세요"); return; }
+  if (INAPP) { inappHelp(); return; }
+  try { await firebase.auth().signInWithPopup(new firebase.auth.GoogleAuthProvider()); }
+  catch (e) { if (!/popup-closed|cancelled-popup/.test(e.code || "")) toast("로그인하지 못했어요: " + (e.code === "auth/popup-blocked" ? "팝업이 막혔어요. 주소창 오른쪽에서 팝업을 허용해 주세요" : e.message || e.code)); }
+}
+/* 동요샘 회원 신청: 내년도 도교육청 교과연구회 등록 명단용 직위·휴대전화·동의 */
+const POSITIONS = ["교사", "수석교사", "교감", "교장", "장학사", "장학관", "교육연구사", "교육연구관", "교수", "강사"];
+function memberFields(px) {
+  return `<div class="memfields">
+    <p class="meta" style="margin:0">동요샘은 도교육청에 등록하는 교과연구회라, 회원이 되시면 <b>내년도 도교육청 교과연구회 등록 회원 명단</b>에 이름·소속·직위·휴대전화가 들어가요.</p>
+    <div class="form2"><label class="fld"><span class="label">직위</span><select id="${px}Pos" data-posx="${px}"><option value="">고르기</option>${POSITIONS.map(p => `<option>${p}</option>`).join("")}<option>기타</option></select><input type="text" id="${px}PosX" maxlength="20" placeholder="직위를 적어 주세요" hidden></label>
+      <label class="fld"><span class="label">휴대전화</span><input type="tel" id="${px}Phone" inputmode="numeric" autocomplete="tel" placeholder="예: 010-1234-5678"></label></div>
+    <p class="meta" style="margin:0">휴대전화 번호는 도교육청 등록 서류와 연구회 연락에만 쓰이고, 운영진만 볼 수 있어요.</p>
+    <details class="priv"><summary>개인정보 수집·이용 안내 (펼쳐 보기)</summary><table>
+      <tr><th>수집 항목</th><td>이름, 소속 학교, 지역, 직위, 휴대전화 번호, 구글 계정 이메일</td></tr>
+      <tr><th>이용 목적</th><td>회원 확인과 관리, 연구회 연락, 도교육청 교과연구회 등록 명단 제출</td></tr>
+      <tr><th>보관 기간</th><td>탈퇴하거나 삭제를 요청할 때까지 (요청하면 바로 지워요)</td></tr>
+      <tr><th>볼 수 있는 사람</th><td>동요샘 운영진 (휴대전화 번호는 다른 회원에게 보이지 않아요)</td></tr></table>
+      <p>동의하지 않을 수 있지만, 동의하지 않으면 동요샘 회원 신청을 할 수 없어요. 노래상자는 그대로 쓸 수 있어요.</p></details>
+    <label class="check"><input type="checkbox" id="${px}Priv"> <span><b>(필수)</b> 위 개인정보 수집·이용에 동의해요.</span></label>
+    <label class="check"><input type="checkbox" id="${px}Reg"> <span><b>(필수)</b> 내년도 도교육청 교과연구회 등록 회원 명단에 이름·소속·직위·휴대전화를 올리는 데 동의해요.</span></label>
+    <label class="check"><input type="checkbox" id="${px}Promise"> <span><b>(필수)</b> 회원만 받는 악보·가사·음원을 밖으로 옮기거나 공유하지 않을게요.</span></label></div>`;
+}
+function memberVal(px) {
+  const g = id => $("#" + px + id) || {}, sel = g("Pos").value || "";
+  const m = { pos: sel === "기타" ? (g("PosX").value || "").trim() : sel, phone: (g("Phone").value || "").trim(), priv: !!g("Priv").checked, reg: !!g("Reg").checked, promise: !!g("Promise").checked };
+  const err = !m.pos ? "직위를 골라 주세요" : !/^01[016789]\d{7,8}$/.test(m.phone.replace(/[^0-9]/g, "")) ? "휴대전화 번호를 확인해 주세요 (예: 010-1234-5678)"
+    : !m.priv ? "개인정보 수집·이용에 동의해 주세요" : !m.reg ? "도교육청 연구회 등록 명단에 동의해야 회원 신청을 할 수 있어요" : !m.promise ? "회원 자료 이용 약속에 체크해 주세요" : "";
+  if (err) { toast(err); return null; }
+  return m;
 }
 async function doSignup() {
   const v = id => (($("#" + id) || {}).value || "").trim();
-  const p = { id: v("suId").toLowerCase(), pw: ($("#suPw") || {}).value || "", name: v("suName"), school: v("suSchool"), region: v("suRegion"), member: !!($("#suMember") || {}).checked };
-  if (!/^[a-z0-9_]{4,20}$/.test(p.id)) { toast("아이디는 영어 소문자·숫자·밑줄로 4~20자예요"); return; }
-  if (p.pw.length < 6) { toast("비밀번호는 6자 이상으로 정해 주세요"); return; }
+  const p = { name: v("suName"), school: v("suSchool"), region: v("suRegion"), member: null };
   if (!p.name || !p.school || !p.region) { toast("이름, 학교, 지역을 모두 적어 주세요"); return; }
+  if (($("#suMember") || {}).checked) { p.member = memberVal("su"); if (!p.member) return; }
   if (APP.busy) return; APP.busy = true; document.body.classList.add("busy");
-  try { const r = await rpc("signup", [p]); toast(r.message); APP.authView = "login"; render(); const li = $("#liId"); if (li) li.value = p.id; }
+  try { setAcc(await rpc("signup", [APP.token, p])); toast("가입 신청을 받았어요. 운영진이 승인하면 쓸 수 있어요"); render(); }
   catch (e) { toast(e.message); }
   finally { APP.busy = false; document.body.classList.remove("busy"); }
 }
 function needTeacher() {
   if (!APP.live) return true;
   if (!APP.token) { toast("로그인하면 누를 수 있어요"); goTab("mine"); return false; }
+  if (!APP.acc || APP.acc.status !== "O") { toast(APP.acc && APP.acc.status === "none" ? "가입 신청을 먼저 해 주세요" : "가입 승인을 받으면 누를 수 있어요"); goTab("mine"); return false; }
   if (!ME.configured) { toast("우리 반을 먼저 만들어 주세요"); goTab("mine"); return false; }
   return true;
 }
@@ -1490,11 +1572,13 @@ document.addEventListener("click", e => {
   if (d.karaoke) { openKaraoke(+d.karaoke); return; }
   if (d.media) { const h = $("#vHost"), s = songById(+d.id); if (!h || !s) return; const cur = ($("#vHost .vbox") || { dataset: {} }).dataset.kind, open = cur !== d.media;
     h.innerHTML = open ? mediaBox(s, d.media) : ""; syncMediaBtns(); if (open) h.scrollIntoView({ block: "nearest", behavior: "smooth" }); return; }
-  if (t.hasAttribute("data-login")) { doLogin(); return; }
+  if (t.hasAttribute("data-glogin")) { googleLogin(); return; }
+  if (t.hasAttribute("data-outside")) { openOutside(); return; }
+  if (t.hasAttribute("data-recheck")) { rpc("me", [APP.token]).then(m => { setAcc(m); render(); toast(m.status === "O" ? "승인됐어요. 우리 반을 만들어 주세요" : "아직 승인 전이에요"); }).catch(er => toast(er.message)); return; }
   if (t.hasAttribute("data-signup")) { doSignup(); return; }
   if (d.auth) { APP.authView = d.auth; render(); return; }
   if (d.copy) { const v = d.copy; (navigator.clipboard ? navigator.clipboard.writeText(v) : Promise.reject()).then(() => toast("주소를 복사했어요"), () => toast(v)); return; }
-  if (t.hasAttribute("data-logout")) { rpc("logout", [APP.token]).catch(() => {}); signOut("로그아웃했어요"); render(); return; }
+  if (t.hasAttribute("data-logout")) { signOut("로그아웃했어요"); render(); return; }
   if (d.cid) { APP.cid = d.cid; store.set("dys_cid", APP.cid); setMe(APP.acc.classes.find(c => c.cid === APP.cid)); render(); toast(`${ME.name}(으)로 바꿨어요`); return; }
   if (t.hasAttribute("data-addclass")) {
     const name = $("#newCls").value.trim(), region = $("#newRegion").value;
@@ -1505,11 +1589,6 @@ document.addEventListener("click", e => {
     const name = $("#meName").value.trim(), region = $("#meRegion").value;
     if (!name || !region) { toast("반 이름과 지역을 모두 정해 주세요"); return; }
     act("editClass", [name, region], null, "반 정보를 고쳤어요"); return;
-  }
-  if (t.hasAttribute("data-pw")) {
-    const o = $("#oldPw").value, v = $("#newPw").value;
-    if (v.length < 6) { toast("새 비밀번호는 6자 이상으로 정해 주세요"); return; }
-    rpc("changePw", [APP.token, o, v]).then(r => { toast(r.ok ? "비밀번호를 바꿨어요" : r.message); if (r.ok) { $("#oldPw").value = ""; $("#newPw").value = ""; } }).catch(err => toast(err.message)); return;
   }
   if (!needTeacher()) return;
   if (d.stamp) { const id = +d.stamp, had = ME.stamps.has(id), s = songById(id);
@@ -1527,6 +1606,8 @@ document.addEventListener("click", e => {
 });
 document.addEventListener("keydown", e => { if (e.key === "Escape") $("#sheetHost").innerHTML = ""; });
 document.addEventListener("change", e => {
+  if (e.target.dataset.memtoggle) { const box = $("#" + e.target.dataset.memtoggle + "Mem"); if (box) box.hidden = !e.target.checked; return; }
+  if (e.target.dataset.posx) { const x = $("#" + e.target.dataset.posx + "PosX"); if (x) x.hidden = e.target.value !== "기타"; return; }
   if (!e.target.matches(".cls-pick") || !APP.acc) return;
   APP.cid = e.target.value; store.set("dys_cid", APP.cid); setMe(APP.acc.classes.find(c => c.cid === APP.cid)); render(); toast(`${ME.name}(으)로 바꿨어요`);
 });
@@ -1752,10 +1833,11 @@ function renderOp(v) {
     const list = acc.filter(x => OP.af === "M" ? x.member === "신청" && x.status !== "X" : OP.af === "MO" ? x.member === "O" : x.status === OP.af).sort((a, b) => String(b.at).localeCompare(String(a.at)));
     const nCls = id => (d.classes || []).filter(c => c.owner === id).length;
     body = `${d.tempPw ? `<div class="card temp"><span class="eyebrow">임시 비밀번호</span><p style="margin:0">${esc(d.tempPw.id)} 선생님의 임시 비밀번호는 <b class="tpw">${esc(d.tempPw.pw)}</b> 예요. 선생님께 알려 드리고, 로그인 뒤 선생님 메뉴에서 바꾸시라고 안내해 주세요. 이 창을 닫으면 다시 볼 수 없어요.</p><div class="btns"><button class="btn ghost" data-copy="${esc(d.tempPw.pw)}">복사</button></div></div>` : ""}
+      ${(OP.af === "M" || OP.af === "MO") && acc.some(x => x.member === "O" && x.reg) ? `<div class="card"><span class="eyebrow">도교육청 교과연구회 등록 명단</span><p class="meta" style="margin:0">동요샘 회원으로 승인했고 명단에 동의한 선생님 ${acc.filter(x => x.member === "O" && x.reg).length}명을 연번·이름·직위·소속·전화번호 표로 복사해요. 한글이나 엑셀 표에 붙여 넣으세요.</p><div class="btns"><button class="btn ghost" data-roster>등록 명단 복사</button></div></div>` : ""}
       <div class="chips">${[["", "가입 승인 기다림"], ["M", "회원방 신청"], ["MO", "동요샘 회원"], ["O", "승인됨"], ["X", "거절"]].map(([k, n]) => `<button class="chip" data-opaf="${k}" aria-pressed="${OP.af === k}">${n} ${cnt[k]}</button>`).join("")}</div>
       ${list.length ? `<div class="list">${list.map(x => `<div class="oprow acc"><span class="key">${esc(x.region)}</span>
-        <span class="min"><b>${esc(x.name)} 선생님 · ${esc(x.school)}${x.member === "O" ? ` <span class="memb">동요샘 회원</span>` : x.member === "신청" ? ` <span class="memb wait">회원방 신청</span>` : ""}</b><small class="meta">아이디 ${esc(x.id)} · 신청 ${esc(x.at)}${x.last ? " · 마지막 로그인 " + esc(x.last) : ""}${x.status === "O" ? " · 반 " + nCls(x.id) + "개" : ""}</small></span>
-        <span class="btns">${x.status !== "O" ? `<button class="vote on" data-opacc="${esc(x.id)}" data-st="O">승인</button>` : ""}${x.status !== "X" ? `<button class="vote" data-opacc="${esc(x.id)}" data-st="X">${x.status === "O" ? "막기" : "거절"}</button>` : ""}${x.status === "O" ? `<button class="vote" data-oppw2="${esc(x.id)}">임시 비밀번호</button>` : ""}${x.status === "X" ? `<button class="vote" data-opacc="${esc(x.id)}" data-st="">다시 검토</button>` : ""}${x.status !== "X" ? (x.member === "O" ? `<button class="vote" data-opmem="${esc(x.id)}" data-st="">회원에서 빼기</button>` : `<button class="vote${x.member === "신청" ? " on" : ""}" data-opmem="${esc(x.id)}" data-st="O">동요샘 회원 승인</button>`) : ""}${x.member === "신청" ? `<button class="vote" data-opmem="${esc(x.id)}" data-st="X">회원 아님</button>` : ""}</span></div>`).join("")}</div>`
+        <span class="min"><b>${esc(x.name)} 선생님 · ${esc(x.school)}${x.member === "O" ? ` <span class="memb">동요샘 회원</span>` : x.member === "신청" ? ` <span class="memb wait">회원방 신청</span>` : ""}</b><small class="meta">${esc(x.id)} · 신청 ${esc(x.at)}${x.pos ? ` · ${esc(x.pos)}` : ""}${x.phone ? ` · ${esc(x.phone)}` : ""}${x.member && x.member !== "X" && x.pos ? (x.reg ? " · 명단 동의" : " · 명단 동의 안 함") : ""}${x.last ? " · 마지막 로그인 " + esc(x.last) : ""}${x.status === "O" ? " · 반 " + nCls(x.id) + "개" : ""}</small></span>
+        <span class="btns">${x.status !== "O" ? `<button class="vote on" data-opacc="${esc(x.id)}" data-st="O">승인</button>` : ""}${x.status !== "X" ? `<button class="vote" data-opacc="${esc(x.id)}" data-st="X">${x.status === "O" ? "막기" : "거절"}</button>` : ""}${x.status === "X" ? `<button class="vote" data-opacc="${esc(x.id)}" data-st="">다시 검토</button>` : ""}${x.status !== "X" ? (x.member === "O" ? `<button class="vote" data-opmem="${esc(x.id)}" data-st="">회원에서 빼기</button>` : `<button class="vote${x.member === "신청" ? " on" : ""}" data-opmem="${esc(x.id)}" data-st="O">동요샘 회원 승인</button>`) : ""}${x.member === "신청" ? `<button class="vote" data-opmem="${esc(x.id)}" data-st="X">회원 아님</button>` : ""}</span></div>`).join("")}</div>`
         : `<div class="empty">${OP.af === "" ? "승인을 기다리는 신청이 없어요" : "여기에 해당하는 계정이 없어요"}</div>`}`;
   }
   if (OP.sub === "classes") {
@@ -1931,7 +2013,8 @@ document.addEventListener("click", e => {
   if (d.opaf !== undefined) { OP.af = d.opaf; if (OP.data) delete OP.data.tempPw; render(); return; }
   if (d.opmem) { opCall("opMember", [d.opmem, d.st], d.st === "O" ? "동요샘 회원으로 승인했어요. 회원방이 열려요" : d.st === "X" ? "회원방 신청을 받지 않았어요" : "회원에서 뺐어요"); return; }
   if (d.opacc) { opCall("opAccount", [d.opacc, d.st], d.st === "O" ? "승인했어요" : d.st === "X" ? "거절했어요" : "다시 검토로 돌렸어요"); return; }
-  if (d.oppw2) { opCall("opResetPw", [d.oppw2], "임시 비밀번호를 만들었어요"); return; }
+  if (t.hasAttribute("data-roster")) { const list = (OP.data.accounts || []).filter(x => x.member === "O" && x.reg); const txt = ["연번\t이름\t직위\t소속\t전화번호"].concat(list.map((x, i) => `${i + 1}\t${x.name}\t${x.pos}\t${x.school}\t${x.phone}`)).join("\n");
+    (navigator.clipboard ? navigator.clipboard.writeText(txt) : Promise.reject()).then(() => toast(`${list.length}명 명단을 복사했어요. 한글이나 엑셀 표에 붙여 넣으세요`), () => toast("복사하지 못했어요")); return; }
   if (t.hasAttribute("data-opmail")) { opCall("opContact", [$("#opMail").value.trim()], "문의 이메일을 저장했어요"); return; }
   if (t.hasAttribute("data-opnotify")) { const m = $("#opNotify").value.trim(); opCall("opNotify", [m], m ? "알림 이메일을 저장했어요. 확인 메일을 보냈어요" : "알림을 껐어요"); return; }
   if (d.opexport) { opExport(d.opexport); return; }
@@ -2208,7 +2291,7 @@ const DEMO_LIB = [
   { id: "d2", t: "예시: 우리 반 무지개 수업 활동지", d: "가사 바꾸기 활동지 (체험 모드 예시)", ty: "수업 자료", m: false, by: "예시 회원 D", at: "2026-09-21", link: "https://cafe.daum.net/jbdongyo" }
 ];
 let NATCFG = {};
-const memberAcc = () => !!(APP.live && APP.token && APP.acc && APP.acc.member === "O");
+const memberAcc = () => !!(APP.live && APP.token && APP.acc && APP.acc.status === "O" && APP.acc.member === "O");
 // 운영진 메뉴에 로그인한 기기는 회원 계정이 없어도 '운영진' 이름으로 회원방에 들어와요
 const isMember = () => !!(APP.live && (memberAcc() || OP.token));
 const roomTok = () => memberAcc() ? APP.token : OP.token;
@@ -2258,10 +2341,12 @@ function roomGate() {
   const st = APP.acc ? APP.acc.member : "";
   const why = ROOM.sub === "chat" ? "대화방" : ROOM.sub === "meet" ? "화상 회의" : ROOM.sub === "cal" ? "일정" : ROOM.sub === "notice" ? "공지" : ROOM.sub === "book" ? "곡집 원고" : "대화방 · 일정 · 공지 · 곡집 원고 · 화상 회의";
   const act = !APP.live ? `<p class="meta" style="margin:0">체험 모드에서는 회원방 안을 둘러볼 수 없어요.</p>`
-    : !APP.token ? `<div class="btns"><button class="btn" data-tab="mine">로그인 · 가입 신청</button></div><p class="meta" style="margin:0">노래상자 계정으로 로그인한 뒤 회원방을 신청하면 운영진이 확인해요. 처음이라면 가입 신청할 때 '동요샘 회원이에요'를 고르세요.</p>`
+    : !APP.token ? `<div class="btns"><button class="btn" data-tab="mine">로그인 · 가입 신청</button></div><p class="meta" style="margin:0">구글로 로그인한 뒤 가입 신청할 때 '동요샘 회원이에요'를 고르면 회원방도 함께 신청돼요.</p>`
+    : APP.acc && APP.acc.status === "none" ? `<div class="btns"><button class="btn" data-tab="mine">가입 신청하기</button></div><p class="meta" style="margin:0">가입 신청할 때 '동요샘 회원이에요'를 고르면 회원방도 함께 신청돼요.</p>`
+    : APP.acc && APP.acc.status !== "O" && st !== "신청" ? `<p class="meta" style="margin:0">노래상자 가입 승인을 받은 뒤 회원방을 신청할 수 있어요.</p>`
     : st === "신청" ? `<p class="meta" style="margin:0"><b>회원방을 신청했어요.</b> 운영진이 확인하면 열려요.</p>`
     : st === "X" ? `<p class="meta" style="margin:0">회원방 신청이 받아들여지지 않았어요. 운영진에게 문의해 주세요.</p>`
-    : `<div class="btns"><button class="btn" data-roomapply>동요샘 회원이에요 · 회원방 신청</button></div><p class="meta" style="margin:0">동요샘 연구회 선생님만 신청해 주세요. 노래상자는 회원이 아니어도 그대로 쓸 수 있어요.</p>`;
+    : `<div class="btns"><button class="btn" data-roomform>동요샘 회원이에요 · 회원방 신청</button></div><p class="meta" style="margin:0">동요샘 연구회 선생님만 신청해 주세요. 노래상자는 회원이 아니어도 그대로 쓸 수 있어요.</p>`;
   return `<div class="card room-gate"><span class="lock" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="4" y="11" width="16" height="10" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
     <h3>동요샘 회원만 들어올 수 있어요</h3><p style="margin:0">회원방의 ${why} 칸은 운영진이 승인한 동요샘 회원에게만 열려요. 회원만 받는 악보·가사·음원은 회원이 아니면 제목도 보이지 않아요.</p>${act}</div>`;
 }
@@ -2485,19 +2570,15 @@ function chatNorm(m) { return { k: String(m.no), no: m.no, n: m.n, x: m.x, at: m
 function fbNorm(key, v) { const d = new Date(v.t || Date.now()); return { k: key, no: v.t || 0, n: v.n, x: v.x, at: localDay(d) + " " + String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"), mine: v.u === FB.uid, fb: true }; }
 async function fbStart() {
   if (FB.on) return true;
-  if (!NATCFG.firebase || !NATCFG.firebase.apiKey || !roomTok()) return false;
+  if (!APP.auth || !memberAcc() || !NATCFG.firebase || !NATCFG.firebase.databaseURL) return false;
   if (FB.starting) return FB.starting;
   FB.starting = (async () => {
     try {
-      const g = "https://www.gstatic.com/firebasejs/10.12.2/";
-      await loadScript(g + "firebase-app-compat.js", () => window.firebase && firebase.initializeApp);
-      await loadScript(g + "firebase-auth-compat.js", () => window.firebase && firebase.auth);
-      await loadScript(g + "firebase-database-compat.js", () => window.firebase && firebase.database);
-      const t = await rpc("fbToken", [roomTok(), OP.token || ""]);
-      if (!t.token) return false;
-      if (!firebase.apps.length) firebase.initializeApp(NATCFG.firebase);
-      await firebase.auth().signInWithCustomToken(t.token);
-      FB.db = firebase.database(); FB.uid = t.uid; ROOM.chat = [];
+      await loadScript("https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js", () => window.firebase && firebase.database);
+      const j = await rpc("fbJoin", [roomTok(), OP.token || ""]);
+      const u = firebase.auth().currentUser;
+      if (!j.uid || !u || u.uid !== j.uid) return false;
+      FB.db = firebase.database(); FB.uid = u.uid; ROOM.chat = [];
       const q = FB.db.ref("chat").orderByChild("t").limitToLast(150);
       q.on("child_added", s => { ROOM.chat.push(fbNorm(s.key, s.val())); ROOM.chat.sort((a, b) => a.no - b.no); ROOM.lastNo = ROOM.chat.length ? ROOM.chat[ROOM.chat.length - 1].no : 0; chatPaint(); });
       q.on("child_removed", s => { ROOM.chat = ROOM.chat.filter(m => m.k !== s.key); chatPaint(); });
@@ -2505,7 +2586,7 @@ async function fbStart() {
       FB.db.ref(".info/connected").on("value", s => { if (s.val()) { me.onDisconnect().remove(); me.set({ n: myName(), t: firebase.database.ServerValue.TIMESTAMP }); } });
       FB.db.ref("online").on("value", s => { ROOM.online = Object.values(s.val() || {}).map(x => x.n); chatPaint(); });
       FB.on = true; return true;
-    } catch (e) { console.warn("파이어베이스 연결 실패, 시트 대화방으로 씀", e); return false; }
+    } catch (e) { console.warn("파이어베이스 대화방 연결 실패, 시트 대화방으로 씀", e); return false; }
     finally { FB.starting = null; }
   })();
   return FB.starting;
@@ -2570,13 +2651,18 @@ function meetView() {
 
 /* 회원방 단추 */
 document.addEventListener("click", e => {
-  const t = e.target.closest("[data-roomzone] button, [data-roomzone] [data-roomsub], button[data-roomapply]"); if (!t) return;
+  const t = e.target.closest("[data-roomzone] button, [data-roomzone] [data-roomsub]"); if (!t) return;
   const d = t.dataset;
   if (d.tab || t.hasAttribute("data-close")) return;
   e.stopPropagation();
   if (d.roomsub) { ROOM.sub = d.roomsub; store.set("dys-room-sub", ROOM.sub); render(); return; }
   if (t.hasAttribute("data-roomreload")) { ROOM.err = ""; ROOM.data = null; ROOM.pub = null; render(); return; }
-  if (t.hasAttribute("data-roomapply")) { (async () => { if (APP.busy) return; roomBusy(true); try { setAcc(await rpc("roomApply", [APP.token])); toast("회원방을 신청했어요. 운영진이 확인하면 열려요"); render(); } catch (er) { toast(er.message); } finally { roomBusy(false); } })(); return; }
+  if (t.hasAttribute("data-roomform")) {
+    $("#sheetHost").innerHTML = `<div class="scrim" data-close></div><div class="sheet" role="dialog" aria-modal="true" aria-label="동요샘 회원방 신청" data-roomzone><div class="in">
+      <button class="btn ghost close" data-close>닫기</button><h3>동요샘 회원방 신청</h3>
+      <p class="meta" style="margin:0">${esc(APP.acc.name)} 선생님 · ${esc(APP.acc.school)} · ${esc(APP.acc.email || "")}</p>${memberFields("ra")}
+      <div class="btns"><button class="btn" data-roomapply>신청하기</button></div></div></div>`; return; }
+  if (t.hasAttribute("data-roomapply")) { const m = memberVal("ra"); if (!m) return; (async () => { if (APP.busy) return; roomBusy(true); try { setAcc(await rpc("roomApply", [APP.token, m])); $("#sheetHost").innerHTML = ""; toast("회원방을 신청했어요. 운영진이 확인하면 열려요"); render(); } catch (er) { toast(er.message); } finally { roomBusy(false); } })(); return; }
   if (d.libkind !== undefined) { ROOM.kind = d.libkind; render(); return; }
   if (t.hasAttribute("data-libnew")) { libForm(null); return; }
   if (d.libedit) { libForm(ROOM.data.items.find(i => i.id === d.libedit)); return; }
@@ -2625,7 +2711,7 @@ function confirmTwice(btn, msg) { if (btn.dataset.armed) return true; btn.datase
   if (tab === "op") { OP.demo = !OP.url; OP.data = null; }
   if (!APP.live) { APP.booting = false; render(); return; }
   const tasks = [loadNational()];
-  if (APP.token) tasks.push(rpc("me", [APP.token]).then(setAcc).catch(e => { signOut(/로그인이 필요/.test(e.message) ? "로그인이 끝났어요. 다시 로그인해 주세요" : ""); }));
+  tasks.push(authInit().then(() => APP.token ? rpc("me", [APP.token]).then(setAcc).catch(e => toast(e.message)) : null).catch(e => console.warn("로그인 준비 실패", e)));
   await Promise.all(tasks);
   APP.booting = false;
   render();

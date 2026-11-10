@@ -20,15 +20,14 @@
 const SERVER_VERSION = 9;   // 9: 동요샘 회원방(자료방·일정·공지·곡집 원고·대화방·화상 회의)  8: 박자(4/4)가 날짜로 바뀌던 문제 고침  7: 엑셀로 곡 한꺼번에 올리기  6: 노래 파일(mp3)·악보 파일 올리기, 곡 종류(창작곡·편곡)·편곡자, 발표회 없는 개인 창작곡  5: 이번 달·학년도 집계, 로그인 유지, 알림 메일, 기록 내려받기, 공개 동의, 운영 기록  4: 곡 지우기·예시 곡 한꺼번에 지우기  3: 한 시트 방식 — 가입·승인·로그인, 계정 하나에 여러 반
 const TZ_ = 'Asia/Seoul';
 const BOARD_CACHE_SEC = 120;
-const TOKEN_SEC = 21600;    // 로그인 6시간 (로그인 유지를 고르면 30일)
-const KEEP_DAYS = 30;
+const TOKEN_SEC = 21600;    // 운영진 메뉴 로그인 6시간
 const MAX_CLASSES = 20;     // 계정 하나에 만들 수 있는 반
 const REGIONS_ = ['서울','부산','대구','인천','광주','대전','울산','세종','경기','강원','충북','충남','전북','전남','경북','경남','제주'];
 
 const SH_ACC = '계정', SH_CLASSES = '반', SH_SONGS = '곡 목록', SH_SET = '설정', SH_LYRICS = '바꾼 가사', SH_RELAY = '릴레이 기록', SH_LOG = '운영 기록', SH_TODAY = '오늘의 동요';
 const SH_LIB = '회원방 자료', SH_EVT = '회원방 일정', SH_NOTE = '회원방 공지', SH_CMT = '회원방 댓글', SH_CHAT = '회원방 대화', SH_MS = '곡집 원고';
 const HEAD_ = {
-  '계정': ['아이디', '비밀번호(암호화)', '선생님 이름', '학교', '지역', '신청한 날', '승인', '마지막 로그인', '메모', '동요샘 회원'],
+  '계정': ['이메일(구글)', '구글 UID', '선생님 이름', '학교', '지역', '신청한 날', '승인', '마지막 로그인', '메모', '동요샘 회원', '직위', '휴대전화', '도 등록 명단 동의', '회원 신청한 때'],
   '반': ['반 ID', '아이디', '반 이름', '지역', '도장', '투표 달', '투표 곡', '좋아요', '릴레이', '만든 날', '마지막 기록', '숨김'],
   '곡 목록': ['곡번호', '곡 제목', '작사', '작곡', '발표회', '발표 연도', '추천 학년군', '주제(쉼표로)', '계절', '조성', '박자', '음역', '가사', '소개', '수업 활용', '영상 주소', '악보 주소', '숨김', '공개 동의', '노래 파일', '곡 종류', '편곡'],
   '설정': ['항목', '값', '설명'],
@@ -96,7 +95,6 @@ function hash_(s) {
   return Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, String(s), Utilities.Charset.UTF_8)
     .map(function (b) { const v = (b + 256) % 256; return (v < 16 ? '0' : '') + v.toString(16); }).join('');
 }
-function pwHash_(id, pw) { return hash_('dys-acc|' + id + '|' + pw); }
 function clean_(s, max) { return String(s == null ? '' : s).replace(/[<>\u0000-\u0009\u000b-\u001f]/g, '').trim().slice(0, max); }
 function num_(v) { const n = Math.round(Number(v)); return (isFinite(n) && n >= 1 && n <= 9999) ? n : 0; }
 function isO_(v) { return /^[OoＯ○◯]$/.test(String(v || '').trim()); }
@@ -138,59 +136,75 @@ function withLock_(fn) {
 /************ 계정 ************/
 function findAcc_(id) {
   const v = values_(SH_ACC);
-  for (let i = 1; i < v.length; i++) if (String(v[i][0]) === id) return { row: i + 1, r: v[i] };
+  for (let i = 1; i < v.length; i++) if (String(v[i][0]).toLowerCase() === String(id).toLowerCase()) return { row: i + 1, r: v[i] };
   return null;
 }
-function signup_(p) {
-  p = p || {};
-  const id = String(p.id || '').trim().toLowerCase();
-  if (!/^[a-z0-9_]{4,20}$/.test(id)) throw new Error('아이디는 영어 소문자·숫자·밑줄로 4~20자로 정해 주세요.');
-  const pw = String(p.pw || '');
-  if (pw.length < 6) throw new Error('비밀번호는 6자 이상으로 정해 주세요.');
+// 로그인은 구글(파이어베이스)로 해요. 화면이 보낸 구글 로그인 표를 구글에 물어 확인하고 10분 동안 기억해요.
+const FB_API_KEY = 'AIzaSyAs7COF8LYZbPmupoMNzq5AyOwmFAx24YM';
+const FB_DB_URL = 'https://dongyo-ssam-default-rtdb.asia-southeast1.firebasedatabase.app';
+const POSITIONS_ = ['교사', '수석교사', '교감', '교장', '장학사', '장학관', '교육연구사', '교육연구관', '교수', '강사'];
+function verify_(idToken) {
+  idToken = String(idToken || '');
+  if (!idToken) throw new Error('로그인이 필요해요. 다시 로그인해 주세요.');
+  const cache = CacheService.getScriptCache(), key = 'V_' + hash_(idToken).slice(0, 40), hit = cache.get(key);
+  if (hit) return JSON.parse(hit);
+  const res = UrlFetchApp.fetch('https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=' + FB_API_KEY,
+    { method: 'post', contentType: 'application/json', payload: JSON.stringify({ idToken: idToken }), muteHttpExceptions: true });
+  const j = parse_(res.getContentText(), {}), u = j.users && j.users[0];
+  if (!u || !u.email) throw new Error('로그인이 필요해요. 다시 로그인해 주세요.');
+  const info = { email: String(u.email).toLowerCase(), uid: String(u.localId) };
+  cache.put(key, JSON.stringify(info), 600);
+  return info;
+}
+function phone_(v) {
+  const d = String(v || '').replace(/[^0-9]/g, '');
+  if (!/^01[016789]\d{7,8}$/.test(d)) throw new Error('휴대전화 번호를 확인해 주세요. (예: 010-1234-5678)');
+  return d.length === 11 ? d.slice(0, 3) + '-' + d.slice(3, 7) + '-' + d.slice(7) : d.slice(0, 3) + '-' + d.slice(3, 6) + '-' + d.slice(6);
+}
+// 동요샘 회원 신청 정보: 직위·휴대전화·동의 (도교육청 교과연구회 등록 명단용)
+function memberInfo_(m) {
+  m = m || {};
+  const pos = clean_(m.pos, 20);
+  if (!pos) throw new Error('직위를 골라 주세요.');
+  const phone = phone_(m.phone);
+  if (!m.priv) throw new Error('개인정보 수집·이용에 동의해 주세요.');
+  if (!m.reg) throw new Error('도교육청 연구회 등록 명단 제출에 동의해야 회원 신청을 할 수 있어요.');
+  if (!m.promise) throw new Error('회원 자료 이용 약속에 체크해 주세요.');
+  return [pos, phone, 'O', now_()];
+}
+function signup_(idToken, p) {
+  const v = verify_(idToken); p = p || {};
   const name = clean_(p.name, 20), school = clean_(p.school, 30), region = String(p.region || '');
   if (!name || !school) throw new Error('선생님 이름과 학교를 적어 주세요.');
   if (REGIONS_.indexOf(region) === -1) throw new Error('지역을 골라 주세요.');
-  return withLock_(function () {
-    const v = values_(SH_ACC);
-    if (v.slice(1).some(function (r) { return String(r[0]) === id; })) throw new Error('이미 있는 아이디예요. 다른 아이디를 정해 주세요.');
-    if (v.slice(1).filter(function (r) { return !String(r[6]).trim(); }).length >= 300) throw new Error('지금은 가입 신청이 너무 많아요. 잠시 뒤 다시 신청해 주세요.');
-    sheet_(SH_ACC).appendRow([id, pwHash_(id, pw), name, school, region, now_(), '', '', '', p.member ? '신청' : '']);
-    notify_('가입 신청: ' + name + ' 선생님 (' + school + ')', '새 가입 신청이 왔어요.\n\n아이디: ' + id + '\n이름: ' + name + '\n학교: ' + school + ' (' + region + ')' + (p.member ? '\n동요샘 회원방도 신청했어요.' : '') + '\n\n운영진 메뉴의 계정 칸에서 승인해 주세요.');
-    return { ok: true, message: '가입 신청을 받았어요. 운영진이 승인하면 로그인할 수 있어요.' };
+  const mem = p.member ? memberInfo_(p.member) : ['', '', '', ''];
+  withLock_(function () {
+    const all = values_(SH_ACC);
+    if (all.slice(1).some(function (r) { return String(r[0]).toLowerCase() === v.email; })) throw new Error('이미 가입 신청을 했어요.');
+    if (all.slice(1).filter(function (r) { return !String(r[6]).trim(); }).length >= 300) throw new Error('지금은 가입 신청이 너무 많아요. 잠시 뒤 다시 신청해 주세요.');
+    const sh = sheet_(SH_ACC);
+    sh.appendRow([v.email, v.uid, name, school, region, now_(), '', now_(), '', p.member ? '신청' : ''].concat(mem));
+    sh.getRange(sh.getLastRow(), 12).setNumberFormat('@').setValue(mem[1]);
   });
+  notify_('가입 신청: ' + name + ' 선생님 (' + school + ')', '새 가입 신청이 왔어요.\n\n이메일: ' + v.email + '\n이름: ' + name + '\n학교: ' + school + ' (' + region + ')' + (p.member ? '\n동요샘 회원방도 신청했어요. (직위: ' + mem[0] + ')' : '') + '\n\n운영진 메뉴의 계정 칸에서 승인해 주세요.');
+  return meApi_(idToken);
 }
-function login_(id, pw, keep) {
-  id = String(id || '').trim().toLowerCase();
-  const a = findAcc_(id);
-  if (!a || String(a.r[1]) !== pwHash_(id, String(pw || ''))) return { ok: false, message: '아이디나 비밀번호가 맞지 않아요.' };
+// 승인된 계정만 기록을 남겨요
+function who_(idToken) {
+  const v = verify_(idToken), a = findAcc_(v.email);
+  if (!a) throw new Error('가입 신청을 먼저 해 주세요.');
   const st = String(a.r[6]).trim();
-  if (!isO_(st)) return { ok: false, message: st ? '가입이 승인되지 않은 계정이에요. 운영진에게 문의해 주세요.' : '아직 승인 전이에요. 운영진이 승인하면 로그인할 수 있어요.' };
-  const token = Utilities.getUuid();
-  CacheService.getScriptCache().put('U_' + token, id, TOKEN_SEC);
-  if (keep) {
-    const p = PropertiesService.getScriptProperties(), all = p.getProperties(), nowMs = Date.now();
-    Object.keys(all).forEach(function (k) { if (k.indexOf('T_') === 0 && Number(String(all[k]).split('|')[1]) < nowMs) p.deleteProperty(k); });
-    p.setProperty('T_' + token, id + '|' + (nowMs + KEEP_DAYS * 86400000));
-  }
-  sheet_(SH_ACC).getRange(a.row, 8).setValue(now_());
-  return { ok: true, token: token, me: me_(id) };
+  if (!isO_(st)) throw new Error(st ? '가입이 승인되지 않은 계정이에요. 운영진에게 문의해 주세요.' : '아직 승인 전이에요. 운영진이 승인하면 쓸 수 있어요.');
+  return v.email;
 }
-function logout_(token) { if (token) { CacheService.getScriptCache().remove('U_' + token); PropertiesService.getScriptProperties().deleteProperty('T_' + token); } return { ok: true }; }
-function who_(token) {
-  let id = token ? CacheService.getScriptCache().get('U_' + token) : null;
-  if (!id && token) {
-    const v = PropertiesService.getScriptProperties().getProperty('T_' + token);
-    if (v && Number(v.split('|')[1]) > Date.now()) { id = v.split('|')[0]; CacheService.getScriptCache().put('U_' + token, id, TOKEN_SEC); }
-  }
-  if (!id) throw new Error('로그인이 필요해요. 다시 로그인해 주세요.');
-  return id;
-}
-function changePw_(token, oldPw, newPw) {
-  const id = who_(token), a = findAcc_(id);
-  if (!a || String(a.r[1]) !== pwHash_(id, String(oldPw || ''))) return { ok: false, message: '지금 비밀번호가 맞지 않아요.' };
-  if (String(newPw || '').length < 6) return { ok: false, message: '새 비밀번호는 6자 이상으로 정해 주세요.' };
-  sheet_(SH_ACC).getRange(a.row, 2).setValue(pwHash_(id, String(newPw)));
-  return { ok: true };
+// 로그인한 뒤 내 상태: none(가입 전) / wait(승인 기다림) / X(거절) / O(승인)
+function meApi_(idToken) {
+  const v = verify_(idToken), a = findAcc_(v.email);
+  if (!a) return { status: 'none', email: v.email };
+  const st = String(a.r[6]).trim();
+  if (!isO_(st)) return { status: st ? 'X' : 'wait', email: v.email, name: String(a.r[2]), school: String(a.r[3]), member: memberSt_(a.r[9]) };
+  if (dstr_(a.r[7]) !== today_()) { try { sheet_(SH_ACC).getRange(a.row, 8).setValue(now_()); } catch (e) {} }
+  const me = me_(v.email); me.status = 'O'; me.email = v.email; return me;
 }
 
 /************ 반 ************/
@@ -209,9 +223,8 @@ function me_(id) {
   const classes = values_(SH_CLASSES).slice(1).filter(function (r) { return String(r[1]) === id; }).map(function (r) {
     const c = classRow_(r); delete c.owner; delete c.stampDates; c.lyrics = lyr[c.cid] || []; return c;
   });
-  return { id: id, name: a ? String(a.r[2]) : '', school: a ? String(a.r[3]) : '', region: a ? String(a.r[4]) : '', member: a ? memberSt_(a.r[9]) : '', classes: classes, month: month_() };
+  return { id: id, name: a ? String(a.r[2]) : '', school: a ? String(a.r[3]) : '', region: a ? String(a.r[4]) : '', member: a ? memberSt_(a.r[9]) : '', classes: classes, month: month_(), status: 'O', email: id };
 }
-function meApi_(token) { return me_(who_(token)); }
 function myClass_(id, cid) {
   const sh = sheet_(SH_CLASSES), v = sh.getDataRange().getValues();
   for (let i = 1; i < v.length; i++) if (String(v[i][0]) === String(cid)) {
@@ -379,7 +392,7 @@ function setOperatorPassword() { PropertiesService.getScriptProperties().setProp
 function fixHeads_() {
   [SH_SONGS, SH_ACC, SH_CLASSES].forEach(function (n) {
     const sh = sheet_(n), h = HEAD_[n], cur = sh.getRange(1, 1, 1, h.length).getValues()[0];
-    h.forEach(function (t, i) { if (String(cur[i]).trim() === '') sh.getRange(1, i + 1).setValue(t).setFontWeight('bold'); });
+    h.forEach(function (t, i) { const c = String(cur[i]).trim(); if (c === '' || (n === SH_ACC && (c === '아이디' || c === '비밀번호(암호화)'))) sh.getRange(1, i + 1).setValue(t).setFontWeight('bold'); });
   });
 }
 function opData_(token) {
@@ -399,7 +412,7 @@ function opData_(token) {
   const logs = values_(SH_LOG).slice(1).slice(-60).reverse().map(function (r) { return { at: tstr_(r[0]), who: String(r[1]), what: String(r[2]), target: String(r[3]) }; });
   const accounts = values_(SH_ACC).slice(1).filter(function (r) { return r[0] !== ''; }).map(function (r) {
     const st = String(r[6] || '').trim();
-    return { id: String(r[0]), name: String(r[2]), school: String(r[3]), region: String(r[4]), at: tstr_(r[5]), last: tstr_(r[7]), status: isO_(st) ? 'O' : st ? 'X' : '', member: memberSt_(r[9]) };
+    return { id: String(r[0]), name: String(r[2]), school: String(r[3]), region: String(r[4]), at: tstr_(r[5]), last: tstr_(r[7]), status: isO_(st) ? 'O' : st ? 'X' : '', member: memberSt_(r[9]), pos: String(r[10] || ''), phone: String(r[11] || ''), reg: isO_(r[12]), mAt: tstr_(r[13]) };
   });
   const classes = values_(SH_CLASSES).slice(1).filter(function (r) { return r[0] !== ''; }).map(function (r) {
     return { pid: String(r[0]), owner: String(r[1]), name: String(r[2]), region: String(r[3]), stamps: parse_(r[4], []).length, last: tstr_(r[10]), hidden: isO_(r[11]) };
@@ -415,15 +428,6 @@ function opAccount_(token, id, status) {
   sheet_(SH_ACC).getRange(a.row, 9).setValue((status === 'O' ? '승인' : status === 'X' ? '거절' : '다시 검토') + ' · ' + opWho_(token) + ' · ' + now_().slice(0, 16));
   log_(opWho_(token), status === 'O' ? '계정 승인' : status === 'X' ? '계정 거절' : '계정 다시 검토', id + ' ' + String(a.r[2]));
   bust_(); return opData_(token);
-}
-function opResetPw_(token, id) {
-  opNeed_(token);
-  const a = findAcc_(String(id)); if (!a) throw new Error('계정을 찾지 못했어요.');
-  const chars = 'abcdefghjkmnpqrstuvwxyz23456789';
-  let pw = ''; for (let i = 0; i < 8; i++) pw += chars.charAt(Math.floor(Math.random() * chars.length));
-  sheet_(SH_ACC).getRange(a.row, 2).setValue(pwHash_(String(id), pw));
-  log_(opWho_(token), '임시 비밀번호 만듦', id);
-  const d = opData_(token); d.tempPw = { id: String(id), pw: pw }; return d;
 }
 function opContact_(token, email) {
   opNeed_(token);
@@ -669,20 +673,23 @@ function fileOut_(fid) {
 }
 
 // 회원방 신청 (이미 로그인한 선생님)
-function roomApply_(token) {
+function roomApply_(token, m) {
   const id = who_(token), a = findAcc_(id);
   if (!a) throw new Error('계정을 찾지 못했어요.');
-  const st = memberSt_(a.r[9]);
-  if (st !== 'O') {
-    sheet_(SH_ACC).getRange(a.row, 10).setValue('신청');
-    notify_('회원방 신청: ' + a.r[2] + ' 선생님 (' + a.r[3] + ')', String(a.r[2]) + ' 선생님이 동요샘 회원방을 신청했어요.\n\n운영진 메뉴의 계정 칸에서 회원으로 승인해 주세요.');
+  if (memberSt_(a.r[9]) !== 'O') {
+    const info = memberInfo_(m), sh = sheet_(SH_ACC);
+    sh.getRange(a.row, 10).setValue('신청');
+    sh.getRange(a.row, 12).setNumberFormat('@');
+    sh.getRange(a.row, 11, 1, 4).setValues([info]);
+    notify_('회원방 신청: ' + a.r[2] + ' 선생님 (' + a.r[3] + ')', String(a.r[2]) + ' 선생님이 동요샘 회원방을 신청했어요. (직위: ' + info[0] + ')\n\n운영진 메뉴의 계정 칸에서 회원으로 승인해 주세요.');
   }
-  return me_(id);
+  const me = me_(id); me.status = 'O'; me.email = id; return me;
 }
 function opMember_(token, id, st) {
   opNeed_(token);
   const a = findAcc_(String(id)); if (!a) throw new Error('계정을 찾지 못했어요.');
   sheet_(SH_ACC).getRange(a.row, 10).setValue(st === 'O' ? 'O' : st === 'X' ? 'X' : '');
+  if (st !== 'O' && a.r[1]) { try { rtdb_('delete', '/members/' + a.r[1]); CacheService.getScriptCache().remove('FBJ_' + a.r[1]); } catch (e) {} }
   log_(opWho_(token), st === 'O' ? '회원방 회원 승인' : st === 'X' ? '회원방 회원 뺌' : '회원방 신청 다시 검토', id + ' ' + String(a.r[2]));
   return opData_(token);
 }
@@ -943,38 +950,60 @@ function opMsReview_(opToken, id, ok) {
   return { ok: true };
 }
 
-/* 파이어베이스 출입증: 회원 승인을 받은 계정에게만 대화방·회의실 출입증(커스텀 토큰)을 만들어 줘요.
+/* 파이어베이스 대화방 출입 명단: 서버가 동요샘 회원의 구글 UID만 /members 에 적어 두고, 규칙이 그 명단으로 출입을 막아요.
    스크립트 속성 FIREBASE_SA 에 파이어베이스 서비스 계정 키(JSON 내용 전체)를 넣어 두면 켜져요. 없으면 대화방은 시트로 돌아가요. */
-function fbToken_(token, opToken) {
-  const u = member_(token);
+function fbAccess_() {
+  const c = CacheService.getScriptCache(), hit = c.get('FB_AT');
+  if (hit) return hit;
   const sa = parse_(PropertiesService.getScriptProperties().getProperty('FIREBASE_SA'), null);
-  if (!sa || !sa.client_email || !sa.private_key) return { token: '' };
-  const b64 = function (s) { return Utilities.base64EncodeWebSafe(s, Utilities.Charset.UTF_8).replace(/=+$/, ''); };
+  if (!sa || !sa.client_email || !sa.private_key) return '';
+  const b64 = function (x) { return Utilities.base64EncodeWebSafe(x, Utilities.Charset.UTF_8).replace(/=+$/, ''); };
   const iat = Math.floor(Date.now() / 1000);
   const head = b64(JSON.stringify({ alg: 'RS256', typ: 'JWT' }));
-  const body = b64(JSON.stringify({ iss: sa.client_email, sub: sa.client_email, aud: 'https://identitytoolkit.googleapis.com/google.identity.identitytoolkit.v1.IdentityToolkit',
-    iat: iat, exp: iat + 3600, uid: 'u_' + u.id, claims: { m: true, n: u.name, op: isOp_(opToken) } }));
+  const body = b64(JSON.stringify({ iss: sa.client_email, scope: 'https://www.googleapis.com/auth/firebase.database https://www.googleapis.com/auth/userinfo.email',
+    aud: 'https://oauth2.googleapis.com/token', iat: iat, exp: iat + 3600 }));
   const sig = Utilities.base64EncodeWebSafe(Utilities.computeRsaSha256Signature(head + '.' + body, sa.private_key, Utilities.Charset.UTF_8)).replace(/=+$/, '');
-  return { token: head + '.' + body + '.' + sig, uid: 'u_' + u.id };
+  const res = UrlFetchApp.fetch('https://oauth2.googleapis.com/token', { method: 'post', muteHttpExceptions: true,
+    payload: { grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer', assertion: head + '.' + body + '.' + sig } });
+  const at = parse_(res.getContentText(), {}).access_token || '';
+  if (at) c.put('FB_AT', at, 3000);
+  return at;
 }
-// 서비스 계정 키를 넣은 뒤 이 함수를 실행해 보면 키가 제대로 들어갔는지 알려 줘요
+function rtdb_(method, path, data) {
+  const at = fbAccess_(); if (!at) return null;
+  const o = { method: method, muteHttpExceptions: true, contentType: 'application/json', headers: { Authorization: 'Bearer ' + at } };
+  if (data !== undefined) o.payload = JSON.stringify(data);
+  return UrlFetchApp.fetch(FB_DB_URL + path + '.json', o);
+}
+function fbJoin_(token, opToken) {
+  const u = member_(token);
+  if (u.op) return { uid: '' };
+  const v = verify_(token), op = isOp_(opToken), c = CacheService.getScriptCache(), key = 'FBJ_' + v.uid, want = u.name + '|' + (op ? 1 : 0);
+  if (c.get(key) === want) return { uid: v.uid };
+  const r = rtdb_('put', '/members/' + v.uid, { n: u.name, op: op });
+  if (!r || r.getResponseCode() >= 300) return { uid: '' };
+  c.put(key, want, 21600);
+  return { uid: v.uid };
+}
+// 서비스 계정 키를 넣은 뒤 이 함수를 실행해 보면 대화방 연결이 되는지 알려 줘요
 function checkFirebase() {
   const sa = parse_(PropertiesService.getScriptProperties().getProperty('FIREBASE_SA'), null);
   if (!sa || !sa.private_key) { Logger.log('스크립트 속성 FIREBASE_SA 가 비어 있거나 JSON 모양이 아니에요.'); return; }
-  Utilities.computeRsaSha256Signature('test', sa.private_key);
-  Logger.log('파이어베이스 키가 잘 들어갔어요: ' + sa.client_email);
+  CacheService.getScriptCache().remove('FB_AT');
+  const r = rtdb_('put', '/check', { at: now_() });
+  Logger.log(r && r.getResponseCode() < 300 ? '파이어베이스 대화방 연결이 잘 돼요: ' + sa.client_email : '연결하지 못했어요: ' + (r ? r.getContentText() : '키를 확인해 주세요'));
 }
 
 const FN_ = {
-  signup: signup_, login: login_, logout: logout_, me: meApi_, changePw: changePw_,
+  signup: signup_, me: meApi_,
   addClass: addClass_, editClass: editClass_,
   toggleStamp: toggleStamp_, vote: vote_, joinRelay: joinRelay_, addLyric: addLyric_, toggleLike: toggleLike_,
   opLogin: opLogin_, opLogout: opLogout_, opData: opData_, opSaveSong: opSaveSong_, opLyric: opLyric_, opRelay: opRelay_,
-  opClass: opClass_, opAccount: opAccount_, opResetPw: opResetPw_, opContact: opContact_,
+  opClass: opClass_, opAccount: opAccount_, opContact: opContact_,
   opDeleteSong: opDeleteSong_, opClearExamples: opClearExamples_, opNotify: opNotify_, opExport: opExport_, opToday: opToday_, opUpload: opUpload_, opBulkSongs: opBulkSongs_,
   opMember: opMember_, roomApply: roomApply_, room: room_, roomUpload: roomUpload_, roomEdit: roomEdit_, roomFile: roomFile_,
   roomAttend: roomAttend_, roomComment: roomComment_, roomCommentDel: roomCommentDel_, chatGet: chatGet_, chatSend: chatSend_, chatDel: chatDel_, meetIn: meetIn_,
-  msUpload: msUpload_, msDel: msDel_, msFile: msFile_, fbToken: fbToken_,
+  msUpload: msUpload_, msDel: msDel_, msFile: msFile_, fbJoin: fbJoin_,
   opNotice: opNotice_, opNoticeDel: opNoticeDel_, opNoticePin: opNoticePin_, opEvent: opEvent_, opEventDel: opEventDel_, opMeet: opMeet_, opMsReview: opMsReview_, opBookTitle: opBookTitle_
 };
 
