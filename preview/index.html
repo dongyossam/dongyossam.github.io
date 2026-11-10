@@ -1273,7 +1273,7 @@ function navSync() {
   document.querySelectorAll("#tabs button").forEach(b => b.setAttribute("aria-selected", b.dataset.group === "songbox" ? inBox : b.dataset.tab === tab));
   $("#subnav").innerHTML = inBox ? `<span class="sub-title">노래상자</span>${SONGBOX.map(([k, n]) => `<button data-tab="${k}"${k === tab ? ' aria-current="page"' : ""}>${n}</button>`).join("")}` : "";
   const h = $("#h1t"), sub = $("#h1sub");
-  if (h) { const tt = inBox ? "노래상자" : "초등음악교육연구회"; h.classList.toggle("long", tt.length > 5); h.innerHTML = tt.split("").map((c, i) => `<span class="r${i % 4}">${c}</span>`).join(""); sub.textContent = inBox ? "선생님이 지은 동요를 함께 불러요" : "동요를 사랑하는 선생님들이 함께 만들고 불러요"; if (typeof fitTitleSub === "function") requestAnimationFrame(fitTitleSub); }
+  if (h) { const tt = "초등음악교육연구회"; h.classList.toggle("long", tt.length > 5); h.innerHTML = tt.split("").map((c, i) => `<span class="r${i % 4}">${c}</span>`).join(""); sub.textContent = "동요를 사랑하는 선생님들이 함께 만들고 불러요"; if (typeof fitTitleSub === "function") requestAnimationFrame(fitTitleSub); }
 }
 function render() {
   navSync();
