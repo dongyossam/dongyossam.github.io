@@ -9,6 +9,7 @@
   명단에 있는 사람만 대화를 읽고 쓸 수 있어요. 출입 명단은 서버만 고칠 수 있어요.
 - 자기가 쓴 말만 지울 수 있어요. (운영진 메뉴에 로그인한 상태로 대화방에 들어온 회원은 다른 말도 지울 수 있어요)
 - 한 번에 500자까지 보낼 수 있어요.
+- 1:1 쪽지(dm)는 보낸 사람과 받은 사람만 읽을 수 있어요. 운영진도 볼 수 없어요.
 
 ----------------------------- 여기부터 복사 -----------------------------
 {
@@ -16,7 +17,7 @@
     ".read": false,
     ".write": false,
     "members": {
-      ".read": false,
+      ".read": "auth != null && root.child('members').child(auth.uid).exists()",
       ".write": false
     },
     "chat": {
@@ -25,6 +26,30 @@
       "$id": {
         ".write": "auth != null && root.child('members').child(auth.uid).exists() && ((!data.exists() && newData.child('u').val() === auth.uid) || (data.exists() && !newData.exists() && (data.child('u').val() === auth.uid || root.child('members').child(auth.uid).child('op').val() === true)))",
         ".validate": "newData.hasChildren(['u', 'n', 'x', 't']) && newData.child('n').val() === root.child('members').child(auth.uid).child('n').val() && newData.child('x').isString() && newData.child('x').val().length > 0 && newData.child('x').val().length <= 500 && newData.child('t').isNumber() && newData.child('t').val() <= now"
+      }
+    },
+    "dm": {
+      "$key": {
+        ".read": "auth != null && root.child('members').child(auth.uid).exists() && ($key.beginsWith(auth.uid + '__') || $key.endsWith('__' + auth.uid))",
+        ".indexOn": ["t"],
+        "$id": {
+          ".write": "auth != null && root.child('members').child(auth.uid).exists() && ($key.beginsWith(auth.uid + '__') || $key.endsWith('__' + auth.uid)) && ((!data.exists() && newData.child('u').val() === auth.uid) || (data.exists() && !newData.exists() && data.child('u').val() === auth.uid))",
+          ".validate": "newData.hasChildren(['u', 'x', 't']) && newData.child('x').isString() && newData.child('x').val().length > 0 && newData.child('x').val().length <= 1000 && newData.child('t').isNumber() && newData.child('t').val() <= now"
+        }
+      }
+    },
+    "inbox": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        "$from": {
+          ".write": "auth != null && root.child('members').child(auth.uid).exists() && (auth.uid === $from || auth.uid === $uid)"
+        }
+      }
+    },
+    "seen": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid"
       }
     },
     "online": {

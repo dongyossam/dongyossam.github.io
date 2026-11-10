@@ -708,6 +708,16 @@ body.kara-on .mini-video{z-index:41;top:max(56px,env(safe-area-inset-top));botto
 .cev.big{background:var(--c1-soft)}.cev.me{box-shadow:inset 3px 0 0 var(--c3)}
 .evinfo{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;align-items:baseline}
 @media (max-width:699px){.rcal>div{min-height:58px;padding:3px}.rcal .dn{font-size:12px;width:20px;height:20px}.cev{font-size:10.5px;padding:1px 3px}.cev .t{white-space:normal;max-height:2.6em}}
+.chat-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 14px;border-bottom:2px solid var(--line)}
+.chat-head b{font-family:var(--display);font-weight:400;font-size:18px}
+.room-entry{display:grid;text-align:left;gap:2px;border:2px solid var(--line);background:var(--paper);border-radius:14px;padding:8px 12px;cursor:pointer;font:inherit;color:var(--ink)}
+.room-entry.on{border-color:var(--c2);background:var(--c2-soft)}
+.room-entry small{color:var(--muted);font-size:12.5px}
+.person.dmp{display:inline-flex;align-items:center;gap:6px;border:0;cursor:pointer;font:700 13.5px var(--body);color:var(--ink);background:var(--bg)}
+.person.dmp.on{background:var(--c2-soft);box-shadow:inset 0 0 0 2px var(--c2)}
+.person .new{font-size:11px;color:#fff;background:var(--c0);border-radius:999px;padding:0 6px}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--line);display:inline-block;flex:none}
+.dot.on{background:var(--c3)}
 /* 동요샘 회원방 */
 .room{display:grid;gap:14px}
 .room-head{display:flex;align-items:flex-end;justify-content:space-between;gap:10px;flex-wrap:wrap}
@@ -789,6 +799,23 @@ body.kara-on .mini-video{z-index:41;top:max(56px,env(safe-area-inset-top));botto
   .ms-row .st,.ms-row .btns{grid-column:2}
   .ev{grid-template-columns:56px minmax(0,1fr)}
   .ev .btns{grid-column:2}
+}
+/* 마우스를 올리면 톡 튀어나오기 */
+@media (hover:hover) and (prefers-reduced-motion:no-preference){
+  nav#tabs button,.room-tabs .chip,.chips .chip,.btn,.app-install,.vote,.cafe,.song,.mrow,.op-tile,.admin-nav button,.room-entry,.person.dmp,.cev,.lib-row,.ms-row{transition:transform .16s cubic-bezier(.3,1.6,.5,1),box-shadow .16s ease,filter .16s ease}
+  nav#tabs button{position:relative}
+  @media (min-width:900px){nav#tabs{overflow:visible!important}}
+  nav#tabs button:hover{transform:translateY(-4px) scale(1.04)!important;z-index:2;filter:brightness(1.05);box-shadow:0 8px 16px rgba(43,58,85,.22),inset 0 -4px 0 rgba(0,0,0,.12)!important}
+  nav#tabs button:first-child:hover,nav#tabs button:last-child:hover{transform:translateY(-4px) scale(1.03)!important}
+  nav#tabs button:active{transform:translateY(-1px) scale(.98)!important}
+  nav#tabs button:not(:first-child):not(:last-child):hover{border-radius:12px!important}
+  .room-tabs .chip:hover,.chips .chip:hover,.vote:hover,.person.dmp:hover{transform:translateY(-2px) scale(1.05)}
+  .btn:hover,.app-install:hover{transform:translateY(-2px) scale(1.04)}
+  .btn:active,.app-install:active,.vote:active,.chip:active,nav#tabs button:active{transform:translateY(0) scale(.97)}
+  .cafe:hover,.op-tile:hover,.room-entry:hover{transform:translateY(-3px)}
+  .song:hover,.mrow:hover,.lib-row:hover,.ms-row:hover{transform:translateY(-2px);box-shadow:0 6px 14px rgba(43,58,85,.12)}
+  .admin-nav button:hover{transform:translateX(3px)}
+  .cev:hover{transform:scale(1.04)}
 }
 </style>
 </head>
@@ -926,6 +953,16 @@ function creditLine(s) {
   return [base, s.type === "편곡" && s.arranger ? "편곡 " + s.arranger : ""].filter(Boolean).join(" · ");
 }
 
+/* 조성을 콩나물 머리 안에 들어가게 짧게: 내림마장조 → E♭, 가단조 → Am, 올림바장조 → F♯ */
+function keyShort(k) {
+  const t = String(k || "").replace(/\s/g, "");
+  if (!t) return "♪";
+  const m = /^(내림|올림)?([다라마바사가나])(장조|단조|장|단)?$/.exec(t);
+  if (m) return "CDEFGAB"["다라마바사가나".indexOf(m[2])] + (m[1] === "내림" ? "♭" : m[1] === "올림" ? "♯" : "") + (/단/.test(m[3] || "") ? "m" : "");
+  const e = /^([A-Ga-g])\s*([#♯b♭]?)\s*(major|minor|maj|min|m|장조|단조)?$/i.exec(t);
+  if (e) return e[1].toUpperCase() + (e[2] === "#" ? "♯" : e[2] === "b" ? "♭" : e[2]) + (/^(minor|min|m|단조)$/i.test(e[3] || "") ? "m" : "");
+  return t.length <= 3 ? t : t.slice(0, 3);
+}
 /* ---------- 시도 타일 지도 (대략적 위치) ---------- */
 const REGIONS = [
  ["인천",0,0],["서울",1,0],["경기",2,0],["강원",3,0],
@@ -1086,7 +1123,7 @@ let chartMode = "vote";
 let tab = APP.q.tab || "today";
 function songRow(s) {
   const c = s.id % 6;
-  return `<button class="song" data-open="${s.id}" style="--c:var(--c${c});--cs:var(--c${c}-soft)"><span class="key${ME.stamps.has(s.id) ? " stamped" : ""}">${esc(s.key)}</span>
+  return `<button class="song" data-open="${s.id}" style="--c:var(--c${c});--cs:var(--c${c}-soft)"><span class="key${ME.stamps.has(s.id) ? " stamped" : ""}" title="${esc(s.key)}">${esc(keyShort(s.key))}</span>
   <span class="min"><b>${esc(s.title)}</b><small>${s.type === "편곡" ? "편곡 · " : ""}${esc(s.grade)} · ${s.themes.map(esc).join(", ")}</small></span>
   <span class="side">${classesSung(s.id)}개 반</span></button>`;
 }
@@ -1171,7 +1208,7 @@ function render() {
         <div class="btns"><button class="btn" data-open="${s.id}">가사와 수업 활용 보기</button>${stampBtn(s.id)}</div>
       </div>
       ${newSongs.length ? `<div class="card mini">${head(esc(lc) + " 노래", "songs")}
-        ${newSongs.map(x => `<button class="mrow" data-open="${x.id}"><span class="key" style="--c:var(--c${x.id % 6});--cs:var(--c${x.id % 6}-soft)">${esc(x.key)}</span><span class="min"><b>${esc(x.title)}</b><small class="meta">${esc(x.grade)} · ${esc(x.lyric)}</small></span><span class="meta">${classesSung(x.id)}개 반</span></button>`).join("")}</div>` : ""}
+        ${newSongs.map(x => `<button class="mrow" data-open="${x.id}"><span class="key" style="--c:var(--c${x.id % 6});--cs:var(--c${x.id % 6}-soft)" title="${esc(x.key)}">${esc(keyShort(x.key))}</span><span class="min"><b>${esc(x.title)}</b><small class="meta">${esc(x.grade)} · ${esc(x.lyric)}</small></span><span class="meta">${classesSung(x.id)}개 반</span></button>`).join("")}</div>` : ""}
       </div>
       <div class="col"><a class="cafe" href="https://cafe.daum.net/jbdongyo" target="_blank" rel="noopener">
         <span class="cafe-notes" aria-hidden="true"><i></i><i></i><i></i></span>
@@ -2333,7 +2370,7 @@ if (/[?&]qr=1\b/.test(location.search)) setTimeout(qrOpen, 300);
 
 /* ---------- 동요샘 회원방 (자료방 · 일정 · 공지 · 곡집 원고 · 대화방 · 화상 회의) ---------- */
 // '회원만' 자료는 서버가 회원에게만 보내요. 회원이 아니면 목록에도 나오지 않아요.
-const ROOM = { sub: store.get("dys-room-sub", "lib"), data: null, pub: null, loading: false, err: "", kind: "", q: "", chat: [], online: [], polling: 0, lastNo: 0, seen: store.get("dys-chat-seen", 0), bookSel: null, msMine: false };
+const ROOM = { sub: store.get("dys-room-sub", "lib"), data: null, pub: null, loading: false, err: "", kind: "", q: "", chat: [], online: [], onlineMap: {}, members: {}, inbox: {}, dmSeen: {}, dm: "", dmMsgs: [], dmRef: null, polling: 0, lastNo: 0, seen: store.get("dys-chat-seen", 0), bookSel: null, msMine: false };
 const ROOM_SUBS = [["lib", "자료방"], ["cal", "일정"], ["notice", "공지"], ["book", "곡집 원고"], ["chat", "대화방"], ["meet", "화상 회의"]];
 const DEMO_LIB = [
   { id: "d1", t: "예시: 발표회 합창 연습 순서표", d: "체험 모드 예시 자료예요.", ty: "공연·발표회", m: false, by: "예시 회원 A", at: "2026-10-02", link: "https://cafe.daum.net/jbdongyo" },
@@ -2382,9 +2419,9 @@ function loadScript(src, test) { return test() ? Promise.resolve() : new Promise
 const loadPdfLib = () => loadScript("https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js", () => window.PDFLib);
 
 function roomTabs() {
-  const unread = isMember() ? ROOM.chat.filter(m => m.no > ROOM.seen && !m.mine).length : 0;
+  const unread = isMember() ? ROOM.chat.filter(m => m.no > ROOM.seen && !m.mine).length + dmUnreadCount() : 0;
   const nNote = ROOM.data ? ROOM.data.notices.length : 0, nIn = ROOM.data ? ROOM.data.meet.in.length : 0;
-  return `<div class="room-tabs" role="tablist" aria-label="회원방 칸">${ROOM_SUBS.map(([k, n]) => `<button class="chip${ROOM.sub === k ? " on" : ""}" role="tab" aria-selected="${ROOM.sub === k}" data-roomsub="${k}">${n}${k === "chat" && unread && ROOM.sub !== "chat" ? `<span class="cnt">${unread}</span>` : ""}${k === "notice" && nNote ? `<span class="cnt soft">${nNote}</span>` : ""}${k === "meet" && nIn ? `<span class="cnt live">${nIn}</span>` : ""}</button>`).join("")}</div>`;
+  return `<div class="room-tabs" role="tablist" aria-label="회원방 칸">${ROOM_SUBS.map(([k, n]) => `<button class="chip${ROOM.sub === k ? " on" : ""}" role="tab" aria-selected="${ROOM.sub === k}" data-roomsub="${k}">${n}${k === "chat" && unread && (ROOM.sub !== "chat" || dmUnreadCount()) ? `<span class="cnt">${unread}</span>` : ""}${k === "notice" && nNote ? `<span class="cnt soft">${nNote}</span>` : ""}${k === "meet" && nIn ? `<span class="cnt live">${nIn}</span>` : ""}</button>`).join("")}</div>`;
 }
 function roomGate() {
   const st = APP.acc ? APP.acc.member : "";
@@ -2412,6 +2449,7 @@ function renderRoom(v) {
   else if (!member) body = roomGate();
   else body = ROOM.sub === "cal" ? calView() : ROOM.sub === "notice" ? noticeView() : ROOM.sub === "book" ? bookView() : ROOM.sub === "chat" ? chatView() : meetView();
   v.innerHTML = `<section class="room" data-roomzone>${head}${roomTabs()}${body}</section>`;
+  if (member && ROOM.data) fbStart().then(on => { if (on && ROOM.sub !== "chat") { const tb = document.querySelector(".room-tabs"); if (tb) tb.outerHTML = roomTabs(); } });
   if (ROOM.sub === "chat" && member) { chatStart(); chatScroll(); ROOM.seen = ROOM.lastNo; store.set("dys-chat-seen", ROOM.seen); }
 }
 
@@ -2655,7 +2693,10 @@ async function fbStart() {
       q.on("child_removed", s => { ROOM.chat = ROOM.chat.filter(m => m.k !== s.key); chatPaint(); });
       const me = FB.db.ref("online/" + FB.uid);
       FB.db.ref(".info/connected").on("value", s => { if (s.val()) { me.onDisconnect().remove(); me.set({ n: myName(), t: firebase.database.ServerValue.TIMESTAMP }); } });
-      FB.db.ref("online").on("value", s => { ROOM.online = Object.values(s.val() || {}).map(x => x.n); chatPaint(); });
+      FB.db.ref("online").on("value", s => { ROOM.onlineMap = s.val() || {}; ROOM.online = Object.values(ROOM.onlineMap).map(x => x.n); chatPaint(); });
+      FB.db.ref("members").on("value", s => { ROOM.members = s.val() || {}; chatPaint(); }, () => {});
+      FB.db.ref("inbox/" + FB.uid).on("value", s => { ROOM.inbox = s.val() || {}; chatPaint(); }, () => {});
+      FB.db.ref("seen/" + FB.uid).on("value", s => { ROOM.dmSeen = s.val() || {}; chatPaint(); }, () => {});
       FB.on = true; return true;
     } catch (e) { console.warn("파이어베이스 대화방 연결 실패, 시트 대화방으로 씀", e); return false; }
     finally { FB.starting = null; }
@@ -2675,21 +2716,49 @@ function chatStart() {
 }
 function chatLines() {
   let day = "";
-  return ROOM.chat.map(m => { const d = String(m.at).slice(0, 10), sep = d !== day ? `<div class="chat-day">${Number(d.slice(5, 7))}월 ${Number(d.slice(8, 10))}일</div>` : ""; day = d;
-    return sep + `<div class="msg${m.mine ? " mine" : ""}${m.del ? " del" : ""}"><span class="who">${esc(m.n)}</span><span class="bubble pre">${m.del ? "지운 말이에요" : esc(m.x)}</span><span class="tm">${esc(String(m.at).slice(11, 16))}${!m.del && (m.mine || roomOp()) ? ` <button class="more" data-chatdel="${esc(m.k)}">지우기</button>` : ""}</span></div>`; }).join("") || `<div class="empty">아직 나눈 말이 없어요. 첫 인사를 남겨 보세요.</div>`;
+  const list = ROOM.dm ? ROOM.dmMsgs : ROOM.chat;
+  return list.map(m => { const d = String(m.at).slice(0, 10), sep = d !== day ? `<div class="chat-day">${Number(d.slice(5, 7))}월 ${Number(d.slice(8, 10))}일</div>` : ""; day = d;
+    return sep + `<div class="msg${m.mine ? " mine" : ""}${m.del ? " del" : ""}">${ROOM.dm ? "" : `<span class="who">${esc(m.n)}</span>`}<span class="bubble pre">${m.del ? "지운 말이에요" : esc(m.x)}</span><span class="tm">${esc(String(m.at).slice(11, 16))}${!m.del && (m.mine || roomOp()) ? ` <button class="more" data-chatdel="${esc(m.k)}">지우기</button>` : ""}</span></div>`; }).join("") || `<div class="empty">${ROOM.dm ? "아직 주고받은 쪽지가 없어요. 첫 쪽지를 보내 보세요." : "아직 나눈 말이 없어요. 첫 인사를 남겨 보세요."}</div>`;
 }
+/* 1:1 쪽지: 보낸 사람과 받은 사람만 읽을 수 있어요 (파이어베이스 규칙으로 막아요) */
+const dmKey = uid => [FB.uid, uid].sort().join("__");
+const dmUnread = uid => { const i = ROOM.inbox[uid]; return !!(i && i.t > (ROOM.dmSeen[uid] || 0)); };
+function dmUnreadCount() { return FB.on ? Object.keys(ROOM.inbox || {}).filter(u => u !== ROOM.dm && dmUnread(u)).length : 0; }
+function dmName(uid) { const m = ROOM.members[uid] || ROOM.onlineMap[uid] || (ROOM.inbox[uid] || {}); return m.n || "회원"; }
+function dmOpen(uid) {
+  if (ROOM.dmRef) { ROOM.dmRef.off(); ROOM.dmRef = null; }
+  ROOM.dm = uid || ""; ROOM.dmMsgs = [];
+  if (uid && FB.on) {
+    const q = FB.db.ref("dm/" + dmKey(uid)).orderByChild("t").limitToLast(200);
+    q.on("child_added", s => { const v = s.val(); ROOM.dmMsgs.push(Object.assign(fbNorm(s.key, v), { n: v.u === FB.uid ? myName() : dmName(uid) })); ROOM.dmMsgs.sort((a, b) => a.no - b.no); dmSeenNow(); chatPaint(); });
+    q.on("child_removed", s => { ROOM.dmMsgs = ROOM.dmMsgs.filter(m => m.k !== s.key); chatPaint(); });
+    ROOM.dmRef = q; dmSeenNow();
+  }
+  render();
+}
+function dmSeenNow() { if (ROOM.dm && FB.on) FB.db.ref("seen/" + FB.uid + "/" + ROOM.dm).set(firebase.database.ServerValue.TIMESTAMP).catch(() => {}); }
 function chatView() {
-  return `<div class="chat-wrap"><div class="card chat"><div class="chat-log" id="chatLog">${chatLines()}</div>
-      <div class="chat-new"><textarea id="chatX" rows="1" maxlength="500" placeholder="회원 모두에게 보내는 말" aria-label="보낼 말"></textarea><button class="btn" data-chatsend>보내기</button></div></div>
-    <aside class="card chat-side"><span class="eyebrow">${FB.on ? "지금 들어와 있는 회원" : "회원"}</span><div id="chatWho">${chatWho()}</div>
-      <p class="meta" style="margin:0">${FB.on ? "말이 바로바로 오가요." : "몇 초마다 새 말을 받아 와요."} 대화는 회원에게만 보여요.</p></aside></div>`;
+  const dm = ROOM.dm;
+  return `<div class="chat-wrap"><div class="card chat">
+      <div class="chat-head">${dm ? `<button class="more" data-dmopen="">← 전체 대화방</button><b>${esc(dmName(dm))} 선생님과 쪽지</b>${ROOM.onlineMap[dm] ? `<span class="dot on" title="접속 중"></span>` : `<span class="meta">지금은 접속해 있지 않아요. 다음에 들어오면 볼 수 있어요</span>`}` : `<b>전체 대화방</b><span class="meta">회원 모두가 함께 봐요</span>`}</div>
+      <div class="chat-log" id="chatLog">${chatLines()}</div>
+      <div class="chat-new"><textarea id="chatX" rows="1" maxlength="${dm ? 1000 : 500}" placeholder="${dm ? esc(dmName(dm)) + " 선생님께 보내는 쪽지" : "회원 모두에게 보내는 말"}" aria-label="보낼 말"></textarea><button class="btn" data-chatsend>보내기</button></div></div>
+    <aside class="card chat-side"><button class="room-entry${dm ? "" : " on"}" data-dmopen=""><b>전체 대화방</b><small>회원 모두가 함께</small></button>
+      <span class="eyebrow">${FB.on ? "회원에게 쪽지 보내기" : "회원"}</span><div id="chatWho">${chatWho()}</div>
+      <p class="meta" style="margin:0">${FB.on ? "이름을 누르면 1:1 쪽지를 주고받아요. 쪽지는 두 사람만 볼 수 있고, 접속하지 않은 선생님에게도 남겨 둘 수 있어요." : "몇 초마다 새 말을 받아 와요. 쪽지는 실시간 연결이 될 때 쓸 수 있어요."}</p></aside></div>`;
 }
-function chatWho() { const list = FB.on ? ROOM.online : ROOM.data.members.map(m => m.n); return list.length ? list.map(n => `<span class="person">${esc(n)}</span>`).join("") : `<span class="meta">아무도 없어요</span>`; }
+function chatWho() {
+  if (!FB.on) { const list = ROOM.data.members.map(m => m.n); return list.length ? list.map(n => `<span class="person">${esc(n)}</span>`).join("") : `<span class="meta">아무도 없어요</span>`; }
+  const ids = [...new Set(Object.keys(ROOM.members).concat(Object.keys(ROOM.inbox || {})))].filter(u => u !== FB.uid);
+  ids.sort((a, b) => (dmUnread(b) - dmUnread(a)) || ((ROOM.onlineMap[b] ? 1 : 0) - (ROOM.onlineMap[a] ? 1 : 0)) || dmName(a).localeCompare(dmName(b), "ko"));
+  return ids.length ? ids.map(u => `<button class="person dmp${ROOM.dm === u ? " on" : ""}" data-dmopen="${esc(u)}"><span class="dot${ROOM.onlineMap[u] ? " on" : ""}"></span>${esc(dmName(u))}${dmUnread(u) && ROOM.dm !== u ? `<span class="new">새 쪽지</span>` : ""}</button>`).join("") : `<span class="meta">아직 다른 회원이 없어요</span>`;
+}
 function chatPaint() {
   if (tab !== "room" || ROOM.sub !== "chat") { if (tab === "room") { const t = document.querySelector(".room-tabs"); if (t) t.outerHTML = roomTabs(); } return; }
   const log = $("#chatLog"); if (!log) return;
   const atEnd = log.scrollHeight - log.scrollTop - log.clientHeight < 60;
   log.innerHTML = chatLines(); const w = $("#chatWho"); if (w) w.innerHTML = chatWho();
+  const tb = document.querySelector(".room-tabs"); if (tb) tb.outerHTML = roomTabs();
   if (atEnd) chatScroll(); ROOM.seen = ROOM.lastNo; store.set("dys-chat-seen", ROOM.seen);
 }
 function chatScroll() { const log = $("#chatLog"); if (log) log.scrollTop = log.scrollHeight; }
@@ -2697,14 +2766,20 @@ async function chatSend() {
   const box = $("#chatX"), x = box ? box.value.trim() : "";
   if (!x) return; box.value = "";
   try {
-    if (FB.on) await FB.db.ref("chat").push({ u: FB.uid, n: myName(), x: x.slice(0, 500), t: firebase.database.ServerValue.TIMESTAMP });
+    if (FB.on && ROOM.dm) {
+      const TS = firebase.database.ServerValue.TIMESTAMP;
+      await FB.db.ref("dm/" + dmKey(ROOM.dm)).push({ u: FB.uid, x: x.slice(0, 1000), t: TS });
+      FB.db.ref("inbox/" + ROOM.dm + "/" + FB.uid).set({ n: myName(), x: x.slice(0, 40), t: TS }).catch(() => {});
+    }
+    else if (FB.on) await FB.db.ref("chat").push({ u: FB.uid, n: myName(), x: x.slice(0, 500), t: firebase.database.ServerValue.TIMESTAMP });
     else { const r = await rpc("chatSend", [roomTok(), x, ROOM.lastNo]); r.list.map(chatNorm).forEach(m => { if (!ROOM.chat.some(y => y.k === m.k)) ROOM.chat.push(m); }); ROOM.lastNo = ROOM.chat.length ? ROOM.chat[ROOM.chat.length - 1].no : 0; chatPaint(); }
     chatScroll();
   } catch (e) { box.value = x; toast("보내지 못했어요: " + e.message); }
 }
 async function chatDel(k) {
   try {
-    if (FB.on) await FB.db.ref("chat/" + k).remove();
+    if (FB.on && ROOM.dm) await FB.db.ref("dm/" + dmKey(ROOM.dm) + "/" + k).remove();
+    else if (FB.on) await FB.db.ref("chat/" + k).remove();
     else { await rpc("chatDel", [roomTok(), +k, OP.token || ""]); const m = ROOM.chat.find(y => y.k === k); if (m) { m.del = true; m.x = ""; } chatPaint(); }
   } catch (e) { toast(e.message); }
 }
@@ -2759,6 +2834,7 @@ document.addEventListener("click", e => {
   if (t.hasAttribute("data-bkall")) { ROOM.bookSel = new Set(ROOM.data.ms.map(m => m.id)); render(); return; }
   if (t.hasAttribute("data-bknone")) { ROOM.bookSel = new Set(); render(); return; }
   if (t.hasAttribute("data-bkmake")) { bookMake(); return; }
+  if (d.dmopen !== undefined) { dmOpen(d.dmopen); return; }
   if (t.hasAttribute("data-chatsend")) { chatSend(); return; }
   if (d.chatdel) { chatDel(d.chatdel); return; }
   if (t.hasAttribute("data-meetgo")) { const u = ROOM.data.meet.url; window.open(u, "_blank", "noopener"); rpc("meetIn", [roomTok(), true]).then(m => { ROOM.data.meet = m; if (tab === "room") render(); }).catch(() => {}); return; }
