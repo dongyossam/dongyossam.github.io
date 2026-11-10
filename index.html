@@ -2469,11 +2469,11 @@ function renderRoom(v) {
 function libView(member) {
   const all = member ? ROOM.data.items : ((ROOM.pub && ROOM.pub.items) || []);
   const kinds = (ROOM.data && ROOM.data.kinds) || (ROOM.pub && ROOM.pub.kinds) || ["악보", "반주(MR)", "음원", "가사", "수업 자료", "공연·발표회", "기타"];
-  const q = ROOM.q.trim(), list = all.filter(i => (!ROOM.kind || (ROOM.kind === "회원" ? i.m : i.ty === ROOM.kind)) && (!q || (i.t + " " + i.d + " " + i.by).includes(q)));
-  const nMem = all.filter(i => i.m).length;
+  const q = ROOM.q.trim(), list = all.filter(i => (!ROOM.kind || (ROOM.kind === "회원" ? i.m && !i.op : ROOM.kind === "운영진" ? i.op : i.ty === ROOM.kind)) && (!q || (i.t + " " + i.d + " " + i.by).includes(q)));
+  const nMem = all.filter(i => i.m && !i.op).length, nOps = all.filter(i => i.op).length;
   return `<div class="card lib-top">
       <div class="lib-bar"><input type="search" id="libQ" value="${esc(ROOM.q)}" placeholder="자료 이름·설명·올린 선생님으로 찾기" aria-label="자료 찾기">${member ? `<button class="btn" data-libnew>자료 올리기</button>` : ""}</div>
-      <div class="chips"><button class="chip" data-libkind="" aria-pressed="${!ROOM.kind}">모두 ${all.length}</button>${kinds.map(k => { const n = all.filter(i => i.ty === k).length; return n ? `<button class="chip" data-libkind="${esc(k)}" aria-pressed="${ROOM.kind === k}">${esc(k)} ${n}</button>` : ""; }).join("")}${member && nMem ? `<button class="chip" data-libkind="회원" aria-pressed="${ROOM.kind === "회원"}">회원만 ${nMem}</button>` : ""}</div>
+      <div class="chips"><button class="chip" data-libkind="" aria-pressed="${!ROOM.kind}">모두 ${all.length}</button>${kinds.map(k => { const n = all.filter(i => i.ty === k).length; return n ? `<button class="chip" data-libkind="${esc(k)}" aria-pressed="${ROOM.kind === k}">${esc(k)} ${n}</button>` : ""; }).join("")}${member && nMem ? `<button class="chip" data-libkind="회원" aria-pressed="${ROOM.kind === "회원"}">회원만 ${nMem}</button>` : ""}${nOps ? `<button class="chip" data-libkind="운영진" aria-pressed="${ROOM.kind === "운영진"}">운영진만 ${nOps}</button>` : ""}</div>
       ${member ? "" : `<p class="meta" style="margin:0">${APP.live ? "누구나 받을 수 있는 자료만 보여요. 동요샘 회원으로 로그인하면 회원만 받는 악보·가사·음원도 보여요." : "체험 모드 예시 자료예요."}</p>`}
     </div>
     <div class="lib-list">${list.map(libRow).join("") || `<div class="empty">${all.length ? "찾는 자료가 없어요." : member ? "아직 올라온 자료가 없어요. 첫 자료를 올려 주세요." : "아직 누구나 받을 수 있는 자료가 없어요."}</div>`}</div>
@@ -2485,7 +2485,7 @@ function libRow(i) {
   const link = i.link ? `<a class="btn ghost" href="${esc(i.link)}" target="_blank" rel="noopener">링크</a>` : "";
   const edit = (i.mine || roomOp()) && isMember() ? `<button class="more" data-libedit="${esc(i.id)}">고치기</button>` : "";
   return `<div class="card lib-row" style="--c:var(--c${c});--cs:var(--c${c}-soft)"><span class="kind">${esc(i.ty)}</span>
-    <div class="min"><b>${esc(i.t)}</b>${i.m ? ` <span class="memb">회원만</span>` : ""}${i.d ? `<p class="meta pre">${esc(i.d)}</p>` : ""}<small class="meta">${esc(i.by)} · ${fmtAt(i.at)}${i.fname ? " · " + esc(i.fname) : ""}${i.n ? ` · ${i.n}번 받음` : ""}</small></div>
+    <div class="min"><b>${esc(i.t)}</b>${i.op ? ` <span class="memb big">운영진만</span>` : i.m ? ` <span class="memb">회원만</span>` : ""}${i.d ? `<p class="meta pre">${esc(i.d)}</p>` : ""}<small class="meta">${esc(i.by)} · ${fmtAt(i.at)}${i.fname ? " · " + esc(i.fname) : ""}${i.n ? ` · ${i.n}번 받음` : ""}</small></div>
     <div class="btns">${open}${link}${edit}</div></div>`;
 }
 function libForm(it) {
@@ -2494,8 +2494,8 @@ function libForm(it) {
     <button class="btn ghost close" data-close>닫기</button><h3>${it ? "자료 고치기" : "자료 올리기"}</h3>
     <label class="fld"><span class="label">자료 이름</span><input type="text" id="lbT" maxlength="60" value="${esc(e.t)}" placeholder="예: 운동장 한 바퀴 악보 (2부 합창)"></label>
     <div class="form2"><label class="fld"><span class="label">종류</span><select id="lbTy">${kinds.map(k => `<option${k === e.ty ? " selected" : ""}>${esc(k)}</option>`).join("")}</select></label>
-      <div class="fld"><span class="label">누가 받을 수 있나요</span><div class="chips scope"><label class="chip"><input type="radio" name="lbS" value="회원"${e.m ? " checked" : ""}> 회원만</label><label class="chip"><input type="radio" name="lbS" value="누구나"${e.m ? "" : " checked"}> 누구나</label></div></div></div>
-    <p class="meta" style="margin:0">앨범 가사·악보·음원처럼 밖으로 나가면 안 되는 자료는 꼭 <b>회원만</b>으로 올려 주세요. 회원이 아니면 목록에도 보이지 않아요.</p>
+      <div class="fld"><span class="label">누가 받을 수 있나요</span><div class="chips scope">${roomOp() ? `<label class="chip"><input type="radio" name="lbS" value="운영진"${e.op ? " checked" : ""}> 운영진만</label>` : ""}<label class="chip"><input type="radio" name="lbS" value="회원"${e.m && !e.op ? " checked" : ""}> 회원만</label><label class="chip"><input type="radio" name="lbS" value="누구나"${e.m ? "" : " checked"}> 누구나</label></div></div></div>
+    <p class="meta" style="margin:0">앨범 가사·악보·음원처럼 밖으로 나가면 안 되는 자료는 꼭 <b>회원만</b>으로 올려 주세요. 회원이 아니면 목록에도 보이지 않아요.${roomOp() ? " 운영진 회의 자료처럼 운영진끼리만 볼 자료는 <b>운영진만</b>으로 올려요. 다른 회원에게는 목록에도 보이지 않아요." : ""}</p>
     <label class="fld"><span class="label">설명 (고르기)</span><textarea id="lbD" rows="3" maxlength="500" placeholder="어떤 자료인지, 어디에 쓰면 좋은지">${esc(e.d)}</textarea></label>
     ${it ? (it.hasFile ? `<p class="meta" style="margin:0">올린 파일: ${esc(it.fname)}</p>` : "") : `<label class="fld"><span class="label">파일 (20MB까지)</span><input type="file" id="lbF"></label>`}
     <label class="fld"><span class="label">링크 (파일 대신 또는 함께, 고르기)</span><input type="url" id="lbL" value="${esc(e.link)}" placeholder="https://"></label>
@@ -2513,7 +2513,7 @@ async function libSave(id) {
   roomBusy(true); let data = "";
   try { data = f ? await fileToB64(f) : ""; } catch (e) { toast(e.message); roomBusy(false); return; }
   roomBusy(false);
-  roomDo("roomUpload", [roomTok(), it, f ? f.name : "", f ? (f.type || "application/octet-stream") : "", data], it.scope === "회원" ? "회원만 받는 자료로 올렸어요" : "누구나 받는 자료로 올렸어요");
+  roomDo("roomUpload", [roomTok(), it, f ? f.name : "", f ? (f.type || "application/octet-stream") : "", data], it.scope === "운영진" ? "운영진만 보는 자료로 올렸어요" : it.scope === "회원" ? "회원만 받는 자료로 올렸어요" : "누구나 받는 자료로 올렸어요");
 }
 async function libGet(id) {
   if (APP.busy) return;
@@ -2523,9 +2523,9 @@ async function libGet(id) {
     const blob = new Blob([b64ToBytes(r.b64)], { type: r.mime || "application/octet-stream" }), url = URL.createObjectURL(blob);
     const media = /^audio\//.test(r.mime) ? `<audio controls autoplay src="${url}" style="width:100%"></audio>` : /^video\//.test(r.mime) ? `<video controls src="${url}" style="width:100%;border-radius:12px"></video>` : /^image\//.test(r.mime) ? `<img src="${url}" alt="${esc(r.name)}" style="width:100%;border-radius:12px">` : "";
     $("#sheetHost").innerHTML = `<div class="scrim" data-close></div><div class="sheet" role="dialog" aria-modal="true" aria-label="자료 열기" data-roomzone><div class="in">
-      <button class="btn ghost close" data-close>닫기</button><h3>${esc(r.name)}</h3><span class="memb">회원만</span>${media}
+      <button class="btn ghost close" data-close>닫기</button><h3>${esc(r.name)}</h3>${media}
       <div class="btns"><a class="btn" href="${url}" download="${esc(r.name)}">내려받기</a>${/pdf/.test(r.mime) ? `<a class="btn ghost" href="${url}" target="_blank" rel="noopener">새 창에서 보기</a>` : ""}</div>
-      <p class="meta" style="margin:0">회원만 받는 자료예요. 밖으로 퍼지지 않게 함께 지켜 주세요.</p></div></div>`;
+      <p class="meta" style="margin:0">회원·운영진만 받는 자료예요. 밖으로 퍼지지 않게 함께 지켜 주세요.</p></div></div>`;
   } catch (e) { toast(e.message); } finally { roomBusy(false); }
 }
 

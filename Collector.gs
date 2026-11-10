@@ -687,7 +687,7 @@ function roomSave_(kind, name, mime, data) {
   if (bytes.length > ROOM_FILE_MAX) throw new Error('파일이 너무 커요. 20MB까지 올릴 수 있어요.');
   let file;
   try {
-    const f = kind === 'PUB' ? subFolder_('F_PUB', '회원방 - 누구나 자료') : kind === 'MS' ? subFolder_('F_MS', '회원방 - 곡집 원고') : subFolder_('F_MEM', '회원방 - 회원만 자료');
+    const f = kind === 'PUB' ? subFolder_('F_PUB', '회원방 - 누구나 자료') : kind === 'OPS' ? subFolder_('F_OPS', '회원방 - 운영진만 자료') : kind === 'MS' ? subFolder_('F_MS', '회원방 - 곡집 원고') : subFolder_('F_MEM', '회원방 - 회원만 자료');
     file = f.createFile(Utilities.newBlob(bytes, String(mime || 'application/octet-stream'), clean_(name, 80) || '파일'));
   } catch (e) { throw new Error('드라이브에 저장하지 못했어요. 편집기에서 allowDrive 를 한 번 실행해 권한을 허용해 주세요.'); }
   if (kind === 'PUB') { try { file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW); } catch (e) {} }
@@ -723,9 +723,11 @@ function opMember_(token, id, st) {
 }
 
 /* 자료방 */
+// 공개 범위: 누구나 / 회원(동요샘 회원만) / 운영진(운영진만)
+function scopeOf_(v) { const t = String(v || '').trim(); return t === '회원' || t === '운영진' ? t : '누구나'; }
 function libOut_(r, uid) {
-  const m = String(r[4]).trim() === '회원', fid = String(r[5] || '');
-  return { id: String(r[0]), t: String(r[1]), d: String(r[2]), ty: String(r[3]) || '기타', m: m, hasFile: !!fid, fname: String(r[6] || ''), mime: String(r[7] || ''),
+  const sc = scopeOf_(r[4]), m = sc !== '누구나', fid = String(r[5] || '');
+  return { id: String(r[0]), t: String(r[1]), d: String(r[2]), ty: String(r[3]) || '기타', m: m, op: sc === '운영진', hasFile: !!fid, fname: String(r[6] || ''), mime: String(r[7] || ''),
     link: String(r[8] || ''), by: String(r[10]), at: tstr_(r[11]), n: Number(r[13]) || 0, mine: !!uid && String(r[9]) === uid,
     url: !m && fid ? 'https://drive.google.com/file/d/' + fid + '/view' : '' };
 }
@@ -733,7 +735,7 @@ function libOut_(r, uid) {
 function libPublic_() {
   const cache = CacheService.getScriptCache(), hit = cache.get('lib');
   if (hit) return JSON.parse(hit);
-  const items = values_(SH_LIB).slice(1).filter(function (r) { return r[0] !== '' && !isO_(r[12]) && String(r[4]).trim() !== '회원'; })
+  const items = values_(SH_LIB).slice(1).filter(function (r) { return r[0] !== '' && !isO_(r[12]) && scopeOf_(r[4]) === '누구나'; })
     .map(function (r) { const o = libOut_(r, ''); delete o.mine; return o; }).reverse();
   const out = { items: items, kinds: LIB_KINDS_, updated: now_() };
   try { cache.put('lib', JSON.stringify(out), 120); } catch (e) {}
@@ -743,7 +745,8 @@ function room_(token, opToken) {
   const u = member_(token);
   const accs = {};
   values_(SH_ACC).slice(1).forEach(function (r) { accs[String(r[0])] = { n: String(r[2]), sc: String(r[3]), m: memberSt_(r[9]) === 'O' }; });
-  const items = values_(SH_LIB).slice(1).filter(function (r) { return r[0] !== '' && !isO_(r[12]); }).map(function (r) { return libOut_(r, u.id); }).reverse();
+  const seeOp = isOp_(token);
+  const items = values_(SH_LIB).slice(1).filter(function (r) { return r[0] !== '' && !isO_(r[12]) && (seeOp || scopeOf_(r[4]) !== '운영진'); }).map(function (r) { return libOut_(r, u.id); }).reverse();
   const cm = values_(SH_CMT).slice(1).filter(function (r) { return r[0] !== ''; });
   const notices = values_(SH_NOTE).slice(1).filter(function (r) { return r[0] !== ''; }).map(function (r) {
     return { id: String(r[0]), t: String(r[1]), body: String(r[2]), by: String(r[3]), at: tstr_(r[4]), pin: isO_(r[5]),
@@ -764,13 +767,14 @@ function room_(token, opToken) {
 function roomUpload_(token, it, name, mime, data) {
   const u = member_(token); it = it || {};
   const t = clean_(it.t, 60); if (!t) throw new Error('자료 이름을 적어 주세요.');
-  const mem = it.scope === '회원', ty = LIB_KINDS_.indexOf(it.ty) !== -1 ? it.ty : '기타';
+  const scope = scopeOf_(it.scope), mem = scope !== '누구나', ty = LIB_KINDS_.indexOf(it.ty) !== -1 ? it.ty : '기타';
+  if (scope === '운영진' && !isOp_(token)) throw new Error('운영진만 보는 자료는 운영진만 올릴 수 있어요.');
   const link = cleanUrl_(it.link);
   if (String(it.link || '').trim() && !link) throw new Error('링크는 https:// 로 시작하는 주소로 적어 주세요.');
   let fid = '', fname = '', fm = '';
-  if (data) { const f = roomSave_(mem ? 'MEM' : 'PUB', name, mime, data); fid = f.getId(); fname = f.getName(); fm = String(mime || ''); }
+  if (data) { const f = roomSave_(scope === '운영진' ? 'OPS' : mem ? 'MEM' : 'PUB', name, mime, data); fid = f.getId(); fname = f.getName(); fm = String(mime || ''); }
   else if (!link) throw new Error('파일을 고르거나 링크를 적어 주세요.');
-  withLock_(function () { sheet_(SH_LIB).appendRow([rid_(), t, longText_(it.d, 500), ty, mem ? '회원' : '누구나', fid, fname, fm, link, u.id, u.name, now_(), '', 0]); });
+  withLock_(function () { sheet_(SH_LIB).appendRow([rid_(), t, longText_(it.d, 500), ty, scope, fid, fname, fm, link, u.id, u.name, now_(), '', 0]); });
   CacheService.getScriptCache().remove('lib');
   return { ok: true };
 }
@@ -788,15 +792,17 @@ function roomEdit_(token, id, e, opToken) {
     const link = cleanUrl_(e.link);
     if (String(e.link || '').trim() && !link) throw new Error('링크는 https:// 로 시작하는 주소로 적어 주세요.');
     if (!fid && !link) throw new Error('파일이나 링크가 하나는 있어야 해요.');
-    const mem = e.scope === '회원', was = String(x.r[4]).trim() === '회원';
-    if (fid && mem !== was) {
+    const scope = scopeOf_(e.scope), was = scopeOf_(x.r[4]), mem = scope !== '누구나';
+    if ((scope === '운영진' || was === '운영진') && scope !== was && !isOp_(opToken || token)) throw new Error('운영진만 보는 자료로 바꾸거나 풀 수 있는 건 운영진뿐이에요.');
+    if (fid && scope !== was) {
       try {
         const f = DriveApp.getFileById(fid);
-        if (mem) { f.setSharing(DriveApp.Access.PRIVATE, DriveApp.Permission.NONE); f.moveTo(subFolder_('F_MEM', '회원방 - 회원만 자료')); }
+        if (scope === '운영진') { f.setSharing(DriveApp.Access.PRIVATE, DriveApp.Permission.NONE); f.moveTo(subFolder_('F_OPS', '회원방 - 운영진만 자료')); }
+        else if (mem) { f.setSharing(DriveApp.Access.PRIVATE, DriveApp.Permission.NONE); f.moveTo(subFolder_('F_MEM', '회원방 - 회원만 자료')); }
         else { f.moveTo(subFolder_('F_PUB', '회원방 - 누구나 자료')); f.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW); }
       } catch (er) { throw new Error('파일 공개 범위를 바꾸지 못했어요. 편집기에서 allowDrive 를 한 번 실행해 주세요.'); }
     }
-    sh.getRange(x.row, 2, 1, 4).setValues([[t, longText_(e.d, 500), LIB_KINDS_.indexOf(e.ty) !== -1 ? e.ty : '기타', mem ? '회원' : '누구나']]);
+    sh.getRange(x.row, 2, 1, 4).setValues([[t, longText_(e.d, 500), LIB_KINDS_.indexOf(e.ty) !== -1 ? e.ty : '기타', scope]]);
     sh.getRange(x.row, 9).setValue(link);
   }
   CacheService.getScriptCache().remove('lib');
@@ -806,7 +812,8 @@ function roomEdit_(token, id, e, opToken) {
 function roomFile_(token, id) {
   const x = findRow_(SH_LIB, id);
   if (!x || isO_(x.r[12]) || !x.r[5]) throw new Error('자료를 찾지 못했어요.');
-  if (String(x.r[4]).trim() === '회원') member_(token);
+  const sc = scopeOf_(x.r[4]);
+  if (sc === '운영진') opNeed_(token); else if (sc === '회원') member_(token);
   const out = fileOut_(x.r[5]);
   try { sheet_(SH_LIB).getRange(x.row, 14).setValue((Number(x.r[13]) || 0) + 1); } catch (e) {}
   return out;
