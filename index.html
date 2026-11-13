@@ -923,7 +923,7 @@ html{overflow-y:scroll;scrollbar-gutter:stable}
 
 <script>
 /* 동요샘 노래상자 화면 — 서버(national.json 의 collector)가 있으면 로그인해서 반별로 기록, 없으면 체험 모드 */
-const APP = { version: '0.6', q: {}, live: false, server: '', token: '', acc: null, cid: '', contact: '', relay: { id: '예시 릴레이', song: 3 }, busy: false, authView: 'login', booting: true, todaySong: null, today: '', yearStart: '' };
+const APP = { version: 11 /* 판 번호: Collector.gs SERVER_VERSION·sw.js·설치안내.txt 와 같게 */, q: {}, live: false, server: '', token: '', acc: null, cid: '', contact: '', relay: { id: '예시 릴레이', song: 3 }, busy: false, authView: 'login', booting: true, todaySong: null, today: '', yearStart: '' };
 new URLSearchParams(location.search).forEach(function (v, k) { APP.q[k] = v; });
 const store = { get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d } catch (e) { return d } }, set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)) } catch (e) {} }, del(k) { try { localStorage.removeItem(k) } catch (e) {} } };
 let PERIOD = store.get("dys-period", "month") === "year" ? "year" : "month";
@@ -1792,11 +1792,6 @@ function opDemo(fn, args) {
   opApplySongs(); return d;
 }
 function opPost(fn, args) { return rpc(fn, args); }
-function opPostOld(fn, args) {
-  return fetch(OP.url, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify({ fn, args }), redirect: "follow" })
-    .then(r => { if (!r.ok) throw new Error("서버 응답 오류 (" + r.status + ")"); return r.json(); })
-    .then(j => { if (!j.ok) throw new Error(j.error || "요청 실패"); return j.result; });
-}
 async function opCall(fn, args, okMsg) {
   if (APP.busy) return;
   APP.busy = true; document.body.classList.add("busy");
@@ -2047,15 +2042,6 @@ function openSongEditor(id) {
       ${s.id ? `<span class="del-zone"><button class="btn ghost" data-opdelask="${s.id}">이 곡 지우기</button><button class="btn danger" data-opdel="${s.id}" hidden>정말 지우기 (되돌릴 수 없어요)</button></span>` : ""}</div>
     <p class="meta" style="margin:0">숨기기는 화면에서만 빼고 기록은 남겨 둬요. 지우기는 곡 목록에서 아예 없애요.</p>
   </div></div>`;  if (nc) $("#f_concert").disabled = true;
-}
-async function opLogin() {
-  const pw = $("#opPw"), nm = $("#opName"), name = nm ? nm.value.trim() : "";
-  if (!name) { toast("운영진 이름을 적어 주세요"); nm && nm.focus(); return; }
-  if (!pw || !pw.value) { toast("운영진 비밀번호를 적어 주세요"); return; }
-  try { const r = await opPost("opLogin", [pw.value, name]);
-    if (!r.ok) { toast(r.message); return; }
-    OP.token = r.token; OP.name = r.name || name; store.set("dys_op", r.token); store.set("dys-opname", OP.name); OP.data = null; toast(`${OP.name}${/운영진$/.test(OP.name) ? "" : " 운영진"}, 어서 오세요`); render(); opEnsure();
-  } catch (e) { toast(e.message); }
 }
 /* CSV 내려받기 (엑셀에서 한글이 깨지지 않게 BOM을 붙여요) */
 function csvDownload(name, head, rows) {
