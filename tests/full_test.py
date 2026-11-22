@@ -314,7 +314,7 @@ def run_all(B, M):
         need("공개 창작동요 발표회" in txt, "첫 화면에 보이기로 고른 행사가 안 보여요")
         need("회원끼리 보는 회의 안내" not in txt and "운영진 회의" not in txt, "회원만 볼 공지·행사가 첫 화면에 나와요")
         need(g.locator("#mg01").count() and g.locator("#mg04").count(), "차례 꼭지가 빠졌어요")
-        g.click(".mg-cover [data-open]"); g.wait_for_selector(".sheet h3", timeout=3000)
+        need(g.locator(".mg-cover img[alt*='로고']").count() == 1 and g.locator(".mg-hero button, .mg-hero a").count() == 0, "첫 화면 표지에 로고만 있어야 해요")
         o.context.close(); g.context.close()
     home_news()
 

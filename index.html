@@ -893,12 +893,8 @@ nav#tabs button:nth-child(1){--c:var(--c0)}nav#tabs button:nth-child(2){--c:var(
 .mg-eye,.mg-eyebrow{font:700 13px var(--body);letter-spacing:.12em;color:var(--c1);margin:0 0 10px}
 .mg-h{font-family:var(--display);font-weight:400;font-size:clamp(34px,4.6vw,58px);line-height:1.18;margin:0 0 16px;color:var(--ink)}
 .mg-p{font-size:16.5px;line-height:1.75;color:var(--ink2,var(--ink));margin:0 0 18px;max-width:640px}
-.mg-cover{position:relative;border-radius:22px;overflow:hidden;background:var(--ink);box-shadow:0 18px 30px -18px rgba(43,58,85,.6);aspect-ratio:4/4.3;display:grid}
-.mg-cover img{width:100%;height:100%;object-fit:cover;grid-area:1/1}
-.mg-cover-t{grid-area:1/1;align-self:end;display:grid;gap:6px;justify-items:start;padding:22px;background:linear-gradient(180deg,transparent,rgba(30,40,62,.82) 38%);color:#fff}
-.mg-cover-t b{font-family:var(--display);font-weight:400;font-size:30px;line-height:1.2}
-.mg-cover-t small{opacity:.85}
-.mg-cover-t .btn{margin-top:6px}
+.mg-cover{border-radius:22px;background:linear-gradient(180deg,#FFF4E2,#DDF0FF);box-shadow:0 18px 30px -20px rgba(43,58,85,.45);aspect-ratio:1/1;display:grid;place-items:center;padding:12%}
+.mg-cover img{width:100%;height:auto;max-height:100%;object-fit:contain}
 .mg-tag{display:inline-block;background:var(--c1);color:#fff;font:700 13px var(--body);border-radius:999px;padding:3px 12px}
 .mg-toc{padding:4px 0 26px}
 .mg-toc-g{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:40px}
@@ -935,7 +931,7 @@ details.mg-row p{margin:8px 0 2px;line-height:1.6;color:var(--muted);font-size:1
 .mg-band-btns{display:grid;gap:10px;justify-items:stretch}
 .mg-band .btn.ghost{background:transparent;color:#fff;border-color:rgba(255,255,255,.6);text-align:center;text-decoration:none}
 .badge-home{display:inline-block;font:700 11.5px var(--body);color:var(--c1);border:1.5px solid var(--c1);border-radius:6px;padding:0 6px;margin-left:6px}
-@media (max-width:899px){.mg-hero{grid-template-columns:1fr;gap:22px;padding-top:24px}.mg-cover{aspect-ratio:16/11}.mg-toc-g,.mg-steps,.mg-cards,.mg-news-grid{grid-template-columns:1fr}.mg-band{grid-template-columns:1fr}.mg-steps{gap:14px}}
+@media (max-width:899px){.mg-hero{grid-template-columns:1fr;gap:22px;padding-top:24px}.mg-cover{aspect-ratio:16/10;padding:8% 18%}.mg-toc-g,.mg-steps,.mg-cards,.mg-news-grid{grid-template-columns:1fr}.mg-band{grid-template-columns:1fr}.mg-steps{gap:14px}}
 </style>
 </head>
 <body style="margin:0">
@@ -2532,14 +2528,14 @@ function homeNews() {
   const op = APP.acc && APP.acc.op;
   const box = (title, more, rows, empty) => `<div class="mg-news"><div class="mg-news-h"><h3>${title}</h3>${more}</div>${rows.length ? rows.join("") : `<p class="meta mg-empty">${empty}</p>`}</div>`;
   return `<div class="mg-news-grid">
-    ${box("알림", `<button class="more" data-tab="room">회원방 공지</button>`, (h.notices || []).map(n => `<details class="mg-row"><summary><b>${n.pin ? `<span class="mg-pin">중요</span>` : ""}${esc(n.t)}</b><span class="when">${esc(String(n.at || "").slice(5, 10).replace("-", "."))}</span></summary><p>${esc(n.body || "").replace(/\n/g, "<br>")}</p></details>`), op ? "회원방에서 공지를 쓸 때 '첫 화면에도 올리기'를 고르면 여기에 나와요." : "새 알림이 생기면 여기에 나와요.")}
-    ${box("다가오는 행사", `<button class="more" data-tab="room">달력 보기</button>`, (h.events || []).map(e => `<div class="mg-row ev"><span class="mg-date"><b>${md(e.d)}</b>${e.tm ? `<small>${esc(e.tm)}</small>` : ""}</span><span><b>${e.big ? `<span class="mg-pin">큰 행사</span>` : ""}${esc(e.t)}</b>${e.p ? `<small class="meta">${esc(e.p)}</small>` : ""}</span></div>`), op ? "회원방 일정에서 '첫 화면에 보이기'를 고른 행사만 여기에 나와요." : "정해진 행사가 생기면 여기에 나와요.")}
-    ${box("누구나 받는 자료", `<button class="more" data-tab="room">자료방</button>`, (h.lib || []).slice(0, 4).map(i => `<div class="mg-row"><span class="mg-kind">${esc(i.ty || "자료")}</span><b>${esc(String(i.t || "").replace(/^예시: /, ""))}</b><span class="when">${esc(i.by || "")}</span></div>`), "회원 선생님이 누구나 볼 수 있게 올린 자료가 여기에 나와요.")}
+    ${box("알림", "", (h.notices || []).map(n => `<details class="mg-row"><summary><b>${n.pin ? `<span class="mg-pin">중요</span>` : ""}${esc(n.t)}</b><span class="when">${esc(String(n.at || "").slice(5, 10).replace("-", "."))}</span></summary><p>${esc(n.body || "").replace(/\n/g, "<br>")}</p></details>`), op ? "회원방에서 공지를 쓸 때 '첫 화면에도 올리기'를 고르면 여기에 나와요." : "새 알림이 생기면 여기에 나와요.")}
+    ${box("다가오는 행사", "", (h.events || []).map(e => `<div class="mg-row ev"><span class="mg-date"><b>${md(e.d)}</b>${e.tm ? `<small>${esc(e.tm)}</small>` : ""}</span><span><b>${e.big ? `<span class="mg-pin">큰 행사</span>` : ""}${esc(e.t)}</b>${e.p ? `<small class="meta">${esc(e.p)}</small>` : ""}</span></div>`), op ? "회원방 일정에서 '첫 화면에 보이기'를 고른 행사만 여기에 나와요." : "정해진 행사가 생기면 여기에 나와요.")}
+    ${box("누구나 받는 자료", "", (h.lib || []).slice(0, 4).map(i => `<div class="mg-row"><span class="mg-kind">${esc(i.ty || "자료")}</span><b>${esc(String(i.t || "").replace(/^예시: /, ""))}</b><span class="when">${esc(i.by || "")}</span></div>`), "회원 선생님이 누구나 볼 수 있게 올린 자료가 여기에 나와요.")}
   </div>`;
 }
 function renderHome(v) {
   homeLoad();
-  const now = new Date(), t = SONGS.length ? pickToday() : null, s = t && t.song;
+  const now = new Date();
   const sec = (n, title) => `<div class="mg-sec-h"><span class="mg-n">${n}</span><h2>${title}</h2></div>`;
   v.innerHTML = `<section class="mg">
     <div class="mg-mast"><span>초등음악교육연구회 동요샘</span><span>${now.getFullYear()}. ${now.getMonth() + 1}.</span></div>
@@ -2548,14 +2544,8 @@ function renderHome(v) {
         <p class="mg-eye">DONGYO SSAM · 초등음악교육연구회</p>
         <h2 class="mg-h">선생님이 짓고,<br>교실이 함께 부르는 동요</h2>
         <p class="mg-p">동요샘은 동요를 사랑하는 선생님들이 모여 아이들 눈높이의 노래를 직접 짓고, 교실에서 아이들과 함께 부르며 나누는 초등음악교육연구회입니다.</p>
-        <div class="btns"><button class="btn" data-tab="today">노래상자 열기</button><button class="btn ghost" data-tab="room">회원방</button></div>
       </div>
-      <div class="mg-cover">
-        <img src="img/kids.jpg" alt="함께 노래하는 아이들 그림">
-        <div class="mg-cover-t"><span class="mg-tag">오늘의 동요</span>
-          ${s ? `<b>${esc(s.title)}</b><small>${esc([s.lyricist && "작사 " + s.lyricist, s.composer && "작곡 " + s.composer].filter(Boolean).join(" · "))}</small><button class="btn" data-open="${s.id}">노래 열기</button>` : `<b>노래상자</b><small>선생님이 지은 동요를 함께 불러요</small>`}
-        </div>
-      </div>
+      <div class="mg-cover"><img src="img/logo.png" alt="동요샘 로고"></div>
     </div>
     <div class="mg-toc"><p class="mg-eyebrow">차례</p><div class="mg-toc-g">
       ${[["01", "동요샘은", "아이들 곁의 선생님이 노래를 지어요"], ["02", "하는 일", "발표회, 곡집·음반, 노래상자"], ["03", "새 소식", "알림, 다가오는 행사, 나눔 자료"], ["04", "함께하기", "누구나 노래상자, 회원은 회원방"]].map(([n, h, d]) => `<a class="mg-toc-i" href="#mg${n}"><span class="mg-n big">${n}</span><span><b>${h}</b><small>${d}</small></span></a>`).join("")}
@@ -2569,7 +2559,7 @@ function renderHome(v) {
       <div class="mg-cards">
         <div class="mg-card c1"><b>창작동요 발표회</b><p>회원 선생님들이 지은 새 노래를 무대에서 처음 선보여요.</p></div>
         <div class="mg-card c2"><b>곡집 · 음반</b><p>발표곡을 악보 곡집과 음반으로 엮어 오래 부를 수 있게 남겨요.</p></div>
-        <div class="mg-card c3"><b>노래상자</b><p>전국 어느 교실이든 동요샘 노래를 찾아 부르고, 부른 노래에 도장을 찍어요.</p><button class="more" data-tab="songs">노래 둘러보기</button></div>
+        <div class="mg-card c3"><b>노래상자</b><p>전국 어느 교실이든 동요샘 노래를 찾아 부르고, 부른 노래에 도장을 찍어요.</p></div>
       </div>
     </div>
     <div class="mg-sec" id="mg03">${sec("03", "새 소식")}${homeNews()}</div>
