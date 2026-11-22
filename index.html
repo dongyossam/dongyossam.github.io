@@ -2778,7 +2778,7 @@ function evSheet(id) {
     <div class="evinfo"><span class="label">날짜</span><span>${dt.getMonth() + 1}월 ${dt.getDate()}일 ${"일월화수목금토"[dt.getDay()]}요일${e.tm ? " " + esc(e.tm) : ""}</span>
       ${e.p ? `<span class="label">장소</span><span>${esc(e.p)}</span>` : ""}
       <span class="label">참석 예정</span><span>${e.att.length ? e.att.length + "명 · " + e.att.map(esc).join(", ") : "아직 없어요"}</span></div>
-    <div class="btns">${e.d >= td ? `<button class="btn${e.me ? " ghost" : ""}" data-attend="${esc(e.id)}">${e.me ? "참석 표시 풀기" : "참석할게요"}</button>` : ""}${roomOp() ? `<button class="btn ghost" data-evhome="${esc(e.id)}">${e.home ? "첫 화면에서 빼기" : "첫 화면에 보이기"}</button><button class="btn ghost danger" data-evdel="${esc(e.id)}">일정 지우기</button>` : ""}</div></div></div>`;
+    <div class="btns">${e.d >= td ? `<button class="btn${e.me ? " ghost" : ""}" data-attend="${esc(e.id)}">${e.me ? "참석 표시 풀기" : "참석할게요"}</button>` : ""}${roomOp() ? `${e.d >= td ? `<button class="btn ghost" data-evhome="${esc(e.id)}">${e.home ? "첫 화면에서 빼기" : "첫 화면에 보이기"}</button>` : `<span class="meta">지난 일정이라 첫 화면에는 나오지 않아요</span>`}<button class="btn ghost danger" data-evdel="${esc(e.id)}">일정 지우기</button>` : ""}</div></div></div>`;
 }
 
 /* 공지 */
