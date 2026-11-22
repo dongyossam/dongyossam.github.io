@@ -3,14 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>동요샘 · 초등음악교육연구회</title>
+<title>동요샘 · 전북초등음악연구회</title>
 <meta name="description" content="선생님이 짓고 교실이 함께 부르는 동요. 동요샘 노래상자에서 전국 교실이 함께 노래하고 도장을 찍어요.">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="동요샘">
-<meta property="og:title" content="동요샘 · 초등음악교육연구회">
+<meta property="og:title" content="동요샘 · 전북초등음악연구회">
 <meta property="og:description" content="선생님이 짓고 교실이 함께 부르는 동요. 동요샘 노래상자에서 전국 교실이 함께 노래하고 도장을 찍어요.">
 <meta property="og:url" content="https://dongyossam.github.io/">
-<meta property="og:image" content="https://dongyossam.github.io/img/og-home.png?v=2">
+<meta property="og:image" content="https://dongyossam.github.io/img/og-home.png?v=3">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:locale" content="ko_KR">
@@ -963,7 +963,7 @@ details.mg-row p{margin:8px 0 2px;line-height:1.6;color:var(--muted);font-size:1
     <g class="float f2" fill="var(--c5)"><ellipse cx="370" cy="96" rx="6" ry="4.5" transform="rotate(-20 370 96)"/><ellipse cx="388" cy="90" rx="6" ry="4.5" transform="rotate(-20 388 90)"/>
       <rect x="374.5" y="74" width="2.2" height="22"/><rect x="392.5" y="68" width="2.2" height="22"/><path d="M374.5 74l20-6v4l-20 6z"/></g>
   </svg>
-  <div class="title t-long"><h1><button class="home" data-tab="home" title="첫 화면으로" aria-label="동요샘 첫 화면으로"><img class="logo" src="img/logo.png" alt="동요샘" width="371" height="272"><span class="tbox"><span class="h1t long" id="h1t"><span class="r0">초</span><span class="r1">등</span><span class="r2">음</span><span class="r3">악</span><span class="r0">교</span><span class="r1">육</span><span class="r2">연</span><span class="r3">구</span><span class="r0">회</span></span><span class="h1sub" id="h1sub">동요를 사랑하는 선생님들이 함께 만들고 불러요</span></span></button></h1></div>
+  <div class="title t-long"><h1><button class="home" data-tab="home" title="첫 화면으로" aria-label="동요샘 첫 화면으로"><img class="logo" src="img/logo.png" alt="동요샘" width="371" height="272"><span class="tbox"><span class="h1t long" id="h1t"><span class="r0">전</span><span class="r1">북</span><span class="r2">초</span><span class="r3">등</span><span class="r0">음</span><span class="r1">악</span><span class="r2">연</span><span class="r3">구</span><span class="r0">회</span></span><span class="h1sub" id="h1sub">동요를 사랑하는 선생님들이 함께 만들고 불러요</span></span></button></h1></div>
   <div class="hd-acts"><button class="app-install qr-btn" id="qrOpen" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/></g><g fill="currentColor"><rect x="5.5" y="5.5" width="2" height="2"/><rect x="16.5" y="5.5" width="2" height="2"/><rect x="5.5" y="16.5" width="2" height="2"/><rect x="14" y="14" width="3" height="3"/><rect x="18" y="18" width="3" height="3"/><rect x="18" y="14" width="3" height="2"/><rect x="14" y="18" width="2" height="3"/></g></svg><span>QR로 들어오기</span></button>
   <button class="app-install" id="appInstall" type="button" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="2" width="12" height="20" rx="3" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 7v7M9 11l3 3 3-3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>앱 아이콘 만들기</span></button></div>
   </div>
@@ -1296,7 +1296,7 @@ function navSync() {
   document.querySelectorAll("#tabs button").forEach(b => b.setAttribute("aria-selected", b.dataset.group === "songbox" ? inBox : b.dataset.tab === tab));
   $("#subnav").innerHTML = inBox ? `<span class="sub-title">노래상자</span>${SONGBOX.map(([k, n]) => `<button data-tab="${k}"${k === tab ? ' aria-current="page"' : ""}>${n}</button>`).join("")}` : "";
   const h = $("#h1t"), sub = $("#h1sub");
-  if (h) { const tt = "초등음악교육연구회"; h.classList.toggle("long", tt.length > 5); h.innerHTML = tt.split("").map((c, i) => `<span class="r${i % 4}">${c}</span>`).join(""); sub.textContent = "동요를 사랑하는 선생님들이 함께 만들고 불러요"; if (typeof fitTitleSub === "function") requestAnimationFrame(fitTitleSub); }
+  if (h) { const tt = "전북초등음악연구회"; h.classList.toggle("long", tt.length > 5); h.innerHTML = tt.split("").map((c, i) => `<span class="r${i % 4}">${c}</span>`).join(""); sub.textContent = "동요를 사랑하는 선생님들이 함께 만들고 불러요"; if (typeof fitTitleSub === "function") requestAnimationFrame(fitTitleSub); }
 }
 function render() {
   navSync();
@@ -2538,12 +2538,12 @@ function renderHome(v) {
   const now = new Date();
   const sec = (n, title) => `<div class="mg-sec-h"><span class="mg-n">${n}</span><h2>${title}</h2></div>`;
   v.innerHTML = `<section class="mg">
-    <div class="mg-mast"><span>초등음악교육연구회 동요샘</span><span>${now.getFullYear()}. ${now.getMonth() + 1}.</span></div>
+    <div class="mg-mast"><span>전북초등음악연구회 동요샘</span><span>${now.getFullYear()}. ${now.getMonth() + 1}.</span></div>
     <div class="mg-hero">
       <div class="mg-lead">
-        <p class="mg-eye">DONGYO SSAM · 초등음악교육연구회</p>
+        <p class="mg-eye">DONGYO SSAM · 전북초등음악연구회</p>
         <h2 class="mg-h">선생님이 짓고,<br>교실이 함께 부르는 동요</h2>
-        <p class="mg-p">동요샘은 동요를 사랑하는 선생님들이 모여 아이들 눈높이의 노래를 직접 짓고, 교실에서 아이들과 함께 부르며 나누는 초등음악교육연구회입니다.</p>
+        <p class="mg-p">동요샘은 동요를 사랑하는 선생님들이 모여 아이들 눈높이의 노래를 직접 짓고, 교실에서 아이들과 함께 부르며 나누는 전북초등음악연구회입니다.</p>
       </div>
       <div class="mg-cover"><img src="img/logo.png" alt="동요샘 로고"></div>
     </div>
