@@ -16,7 +16,7 @@
  * 시트에서 직접 고쳐도 됩니다. 고친 내용은 2분 안에 화면에 반영됩니다.
  *************************************************************/
 
-const SERVER_VERSION = 11;  // 11: 자료 링크 여러 개, 운영진만 보는 자료, 회원방 활동 후기  10: 구글 로그인, 운영진도 구글 계정 권한으로, 회원 신청에 직위·휴대전화·도교육청 등록 명단 동의  9: 동요샘 회원방(자료방·일정·공지·곡집 원고·대화방·화상 회의)  8: 박자(4/4)가 날짜로 바뀌던 문제 고침  7: 엑셀로 곡 한꺼번에 올리기  6: 노래 파일(mp3)·악보 파일 올리기, 곡 종류(창작곡·편곡)·편곡자, 발표회 없는 개인 창작곡  5: 이번 달·학년도 집계, 로그인 유지, 알림 메일, 기록 내려받기, 공개 동의, 운영 기록  4: 곡 지우기·예시 곡 한꺼번에 지우기  3: 한 시트 방식 — 가입·승인·로그인, 계정 하나에 여러 반
+const SERVER_VERSION = 12;  // 12: 동요샘 홈(첫 화면) 공지·행사  11: 자료 링크 여러 개, 운영진만 보는 자료, 회원방 활동 후기  10: 구글 로그인, 운영진도 구글 계정 권한으로, 회원 신청에 직위·휴대전화·도교육청 등록 명단 동의  9: 동요샘 회원방(자료방·일정·공지·곡집 원고·대화방·화상 회의)  8: 박자(4/4)가 날짜로 바뀌던 문제 고침  7: 엑셀로 곡 한꺼번에 올리기  6: 노래 파일(mp3)·악보 파일 올리기, 곡 종류(창작곡·편곡)·편곡자, 발표회 없는 개인 창작곡  5: 이번 달·학년도 집계, 로그인 유지, 알림 메일, 기록 내려받기, 공개 동의, 운영 기록  4: 곡 지우기·예시 곡 한꺼번에 지우기  3: 한 시트 방식 — 가입·승인·로그인, 계정 하나에 여러 반
 const TZ_ = 'Asia/Seoul';
 const BOARD_CACHE_SEC = 120;
 const MAX_CLASSES = 20;     // 계정 하나에 만들 수 있는 반
@@ -34,8 +34,8 @@ const HEAD_ = {
   '운영 기록': ['때', '운영진', '한 일', '대상'],
   '오늘의 동요': ['날짜', '곡번호', '한마디'],
   '회원방 자료': ['자료 ID', '제목', '설명', '종류', '공개', '파일 ID', '파일 이름', '파일 형식', '링크', '아이디', '올린 선생님', '올린 때', '숨김', '받은 수'],
-  '회원방 일정': ['일정 ID', '날짜', '시간', '제목', '장소', '큰 행사', '참석(아이디)'],
-  '회원방 공지': ['공지 ID', '제목', '내용', '쓴 사람', '쓴 때', '고정'],
+  '회원방 일정': ['일정 ID', '날짜', '시간', '제목', '장소', '큰 행사', '참석(아이디)', '첫 화면'],
+  '회원방 공지': ['공지 ID', '제목', '내용', '쓴 사람', '쓴 때', '고정', '첫 화면'],
   '회원방 댓글': ['댓글 ID', '공지 ID', '아이디', '이름', '내용', '쓴 때'],
   '회원방 대화': ['번호', '때', '아이디', '이름', '내용', '지움'],
   '곡집 원고': ['원고 ID', '곡집', '곡 제목', '지은이', '아이디', '이름', '파일 ID', '쪽수', '검토', '낸 때'],
@@ -46,7 +46,7 @@ const HEAD_ = {
 function doGet(e) {
   const q = (e && e.parameter) || {};
   let out;
-  try { out = { ok: true, result: q.api === 'board' ? getBoard_() : q.api === 'lib' ? libPublic_() : { server: SERVER_VERSION, now: now_() } }; }
+  try { out = { ok: true, result: q.api === 'board' ? getBoard_() : q.api === 'lib' ? libPublic_() : q.api === 'home' ? homePublic_() : { server: SERVER_VERSION, now: now_() } }; }
   catch (err) { out = { ok: false, error: String((err && err.message) || err) }; }
   return json_(out);
 }
@@ -742,6 +742,26 @@ function libOut_(r, uid) {
     link: String(r[8] || ''), by: String(r[10]), at: tstr_(r[11]), n: Number(r[13]) || 0, mine: !!uid && String(r[9]) === uid,
     url: !m && fid ? 'https://drive.google.com/file/d/' + fid + '/view' : '' };
 }
+// 예전에 만든 시트에 새 칸 제목이 없으면 채워요
+function headFix_(name) {
+  const sh = sheet_(name), h = HEAD_[name], cur = sh.getRange(1, 1, 1, h.length).getValues()[0];
+  if (cur.some(function (v, i) { return String(v) !== h[i]; })) sh.getRange(1, 1, 1, h.length).setValues([h]);
+}
+// 동요샘 홈(누구나): 운영진이 '첫 화면'으로 고른 공지와 다가오는 행사, 누구나 받는 자료 몇 개
+function homePublic_() {
+  const cache = CacheService.getScriptCache(), hit = cache.get('home');
+  if (hit) return JSON.parse(hit);
+  const td = today_();
+  const notices = values_(SH_NOTE).slice(1).filter(function (r) { return r[0] !== '' && isO_(r[6]); })
+    .map(function (r) { return { id: String(r[0]), t: String(r[1]), body: String(r[2]).slice(0, 400), at: tstr_(r[4]), pin: isO_(r[5]) }; })
+    .reverse().sort(function (a, b) { return (b.pin ? 1 : 0) - (a.pin ? 1 : 0); }).slice(0, 4);
+  const events = values_(SH_EVT).slice(1).filter(function (r) { return r[0] !== '' && isO_(r[7]) && dstr_(r[1]) >= td; })
+    .map(function (r) { return { id: String(r[0]), d: dstr_(r[1]), tm: hm_(r[2]), t: String(r[3]), p: String(r[4]), big: isO_(r[5]) }; })
+    .sort(function (a, b) { return a.d < b.d ? -1 : a.d > b.d ? 1 : a.tm < b.tm ? -1 : 1; }).slice(0, 4);
+  const out = { notices: notices, events: events, lib: libPublic_().items.slice(0, 4), updated: now_() };
+  try { cache.put('home', JSON.stringify(out), 120); } catch (e) {}
+  return out;
+}
 // 누구나 보는 목록: '회원만' 자료는 아예 넣지 않아요
 function libPublic_() {
   const cache = CacheService.getScriptCache(), hit = cache.get('lib');
@@ -760,12 +780,12 @@ function room_(token, opToken) {
   const items = values_(SH_LIB).slice(1).filter(function (r) { return r[0] !== '' && !isO_(r[12]) && (seeOp || scopeOf_(r[4]) !== '운영진'); }).map(function (r) { return libOut_(r, u.id); }).reverse();
   const cm = values_(SH_CMT).slice(1).filter(function (r) { return r[0] !== ''; });
   const notices = values_(SH_NOTE).slice(1).filter(function (r) { return r[0] !== ''; }).map(function (r) {
-    return { id: String(r[0]), t: String(r[1]), body: String(r[2]), by: String(r[3]), at: tstr_(r[4]), pin: isO_(r[5]),
+    return { id: String(r[0]), t: String(r[1]), body: String(r[2]), by: String(r[3]), at: tstr_(r[4]), pin: isO_(r[5]), home: isO_(r[6]),
       cm: cm.filter(function (c) { return String(c[1]) === String(r[0]); }).map(function (c) { return { id: String(c[0]), by: String(c[3]), x: String(c[4]), at: tstr_(c[5]), mine: String(c[2]) === u.id }; }) };
   }).reverse();
   const events = values_(SH_EVT).slice(1).filter(function (r) { return r[0] !== ''; }).map(function (r) {
     const att = String(r[6] || '').split(',').filter(String);
-    return { id: String(r[0]), d: dstr_(r[1]), tm: hm_(r[2]), t: String(r[3]), p: String(r[4]), big: isO_(r[5]), att: att.map(function (x) { return accs[x] ? accs[x].n : x === ownerEmail_() ? '동요샘 관리 계정' : '운영진'; }), me: att.indexOf(u.id) !== -1 };
+    return { id: String(r[0]), d: dstr_(r[1]), tm: hm_(r[2]), t: String(r[3]), p: String(r[4]), big: isO_(r[5]), home: isO_(r[7]), att: att.map(function (x) { return accs[x] ? accs[x].n : x === ownerEmail_() ? '동요샘 관리 계정' : '운영진'; }), me: att.indexOf(u.id) !== -1 };
   }).sort(function (a, b) { return a.d < b.d ? -1 : a.d > b.d ? 1 : a.tm < b.tm ? -1 : 1; });
   const book = bookTitle_();
   const ms = values_(SH_MS).slice(1).filter(function (r) { return r[0] !== '' && String(r[1]) === book; }).map(function (r) {
@@ -786,7 +806,7 @@ function roomUpload_(token, it, name, mime, data) {
   if (data) { const f = roomSave_(scope === '운영진' ? 'OPS' : mem ? 'MEM' : 'PUB', name, mime, data); fid = f.getId(); fname = f.getName(); fm = String(mime || ''); }
   else if (!link) throw new Error('파일을 고르거나 링크를 적어 주세요.');
   withLock_(function () { sheet_(SH_LIB).appendRow([rid_(), t, longText_(it.d, 500), ty, scope, fid, fname, fm, link, u.id, u.name, now_(), '', 0]); });
-  CacheService.getScriptCache().remove('lib');
+  CacheService.getScriptCache().remove('lib'); CacheService.getScriptCache().remove('home');
   return { ok: true };
 }
 function roomEdit_(token, id, e, opToken) {
@@ -815,7 +835,7 @@ function roomEdit_(token, id, e, opToken) {
     sh.getRange(x.row, 2, 1, 4).setValues([[t, longText_(e.d, 500), LIB_KINDS_.indexOf(e.ty) !== -1 ? e.ty : '기타', scope]]);
     sh.getRange(x.row, 9).setValue(link);
   }
-  CacheService.getScriptCache().remove('lib');
+  CacheService.getScriptCache().remove('lib'); CacheService.getScriptCache().remove('home');
   return { ok: true };
 }
 // 파일 받기: '회원만' 자료는 회원 로그인 확인 뒤에만 파일을 보내요
@@ -837,13 +857,23 @@ function opEvent_(opToken, ev) {
   if (tm && !/^\d{1,2}:\d{2}$/.test(tm)) throw new Error('시간은 14:30 처럼 적어 주세요.');
   const sh = sheet_(SH_EVT);
   sh.getRange('B:C').setNumberFormat('@');
-  sh.appendRow([rid_(), d, tm, t, clean_(ev.p, 60), ev.big ? 'O' : '', '']);
+  headFix_(SH_EVT);
+  sh.appendRow([rid_(), d, tm, t, clean_(ev.p, 60), ev.big ? 'O' : '', '', ev.home ? 'O' : '']);
+  CacheService.getScriptCache().remove('home');
   log_(opWho_(opToken), '회원방 일정 올림', d + ' ' + t);
   return { ok: true };
 }
 function opEventDel_(opToken, id) {
   opNeed_(opToken); const x = findRow_(SH_EVT, id);
   if (x) { sheet_(SH_EVT).deleteRow(x.row); log_(opWho_(opToken), '회원방 일정 지움', String(x.r[3])); }
+  CacheService.getScriptCache().remove('home');
+  return { ok: true };
+}
+// 첫 화면(누구나 보는 동요샘 홈)에 이 일정을 보일지 말지
+function opEventHome_(opToken, id) {
+  opNeed_(opToken); headFix_(SH_EVT); const x = findRow_(SH_EVT, id);
+  if (x) sheet_(SH_EVT).getRange(x.row, 8).setValue(isO_(x.r[7]) ? '' : 'O');
+  CacheService.getScriptCache().remove('home');
   return { ok: true };
 }
 function roomAttend_(token, id) {
@@ -856,17 +886,26 @@ function roomAttend_(token, id) {
     return { ok: true, on: i === -1 };
   });
 }
-function opNotice_(opToken, t, body, pin) {
+function opNotice_(opToken, t, body, pin, home) {
   opNeed_(opToken);
   t = clean_(t, 60); body = longText_(body, 3000);
   if (!t || !body) throw new Error('제목과 내용을 적어 주세요.');
-  sheet_(SH_NOTE).appendRow([rid_(), t, body, opWho_(opToken), now_(), pin ? 'O' : '']);
+  headFix_(SH_NOTE);
+  sheet_(SH_NOTE).appendRow([rid_(), t, body, opWho_(opToken), now_(), pin ? 'O' : '', home ? 'O' : '']);
+  CacheService.getScriptCache().remove('home');
   log_(opWho_(opToken), '회원방 공지 올림', t);
   return { ok: true };
 }
 function opNoticeDel_(opToken, id) {
   opNeed_(opToken); const x = findRow_(SH_NOTE, id);
   if (x) { sheet_(SH_NOTE).deleteRow(x.row); log_(opWho_(opToken), '회원방 공지 지움', String(x.r[1])); }
+  CacheService.getScriptCache().remove('home');
+  return { ok: true };
+}
+function opNoticeHome_(opToken, id) {
+  opNeed_(opToken); headFix_(SH_NOTE); const x = findRow_(SH_NOTE, id);
+  if (x) sheet_(SH_NOTE).getRange(x.row, 7).setValue(isO_(x.r[6]) ? '' : 'O');
+  CacheService.getScriptCache().remove('home');
   return { ok: true };
 }
 function opNoticePin_(opToken, id) {
@@ -1124,7 +1163,7 @@ const FN_ = {
   opMember: opMember_, roomApply: roomApply_, room: room_, roomUpload: roomUpload_, roomEdit: roomEdit_, roomFile: roomFile_,
   roomAttend: roomAttend_, roomComment: roomComment_, roomCommentDel: roomCommentDel_, chatGet: chatGet_, chatSend: chatSend_, chatDel: chatDel_, meetIn: meetIn_,
   msUpload: msUpload_, msDel: msDel_, msFile: msFile_, fbJoin: fbJoin_,
-  opNotice: opNotice_, opNoticeDel: opNoticeDel_, opNoticePin: opNoticePin_, opEvent: opEvent_, opEventDel: opEventDel_, opMeet: opMeet_, opMsReview: opMsReview_, opBookTitle: opBookTitle_,
+  opNotice: opNotice_, opNoticeDel: opNoticeDel_, opNoticePin: opNoticePin_, opNoticeHome: opNoticeHome_, opEvent: opEvent_, opEventDel: opEventDel_, opEventHome: opEventHome_, opMeet: opMeet_, opMsReview: opMsReview_, opBookTitle: opBookTitle_,
   opReview: opReview_, opReviewPhoto: opReviewPhoto_, opReviewPhotoDel: opReviewPhotoDel_, opReviewDel: opReviewDel_, reviewPhoto: reviewPhoto_, reviewLike: reviewLike_
 };
 

@@ -164,12 +164,18 @@ def run_all(B, M):
     def guest_nav():
         pg = B.page(); pg.goto(U); ready(pg); shot(pg, "01_손님_첫화면")
         tabs = [t.get_attribute("data-tab") for t in pg.locator("nav#tabs button").all()]
-        need(len(tabs) >= 4, f"맨 위 메뉴가 {len(tabs)}개뿐이에요")
+        need(len(tabs) >= 3, f"맨 위 메뉴가 {len(tabs)}개뿐이에요")
         for t in tabs:
             pg.click(f'nav#tabs [data-tab="{t}"]'); pg.wait_for_timeout(350)
             need(pg.inner_text("#view").strip(), f"'{t}' 화면이 비어 있어요")
+        pg.click('nav#tabs [data-tab="today"]'); pg.wait_for_timeout(300)
+        subs = [x.get_attribute("data-tab") for x in pg.locator("#subnav button").all()]
+        need(len(subs) >= 4, "노래상자 아래 메뉴가 안 보여요")
+        for t in subs:
+            pg.click(f'#subnav [data-tab="{t}"]'); pg.wait_for_timeout(300)
+            need(pg.inner_text("#view").strip(), f"노래상자 '{t}' 화면이 비어 있어요")
         S["guest"] = pg
-        return "메뉴 " + ", ".join(tabs)
+        return "메뉴 " + ", ".join(tabs) + " / 노래상자 " + ", ".join(subs)
     guest_nav()
 
     @step("손님: 곡 열기 · 노래방 화면 · 곡 QR")
@@ -215,7 +221,7 @@ def run_all(B, M):
         pg.click('.stampbook [data-stamp="1"]'); pg.wait_for_timeout(900)
         row = [r for r in M.sheet("반") if "전북햇살초 5-1" in str(r)][0]
         need("1" in str(row), "도장이 반 시트에 안 남았어요")
-        pg.click('nav#tabs [data-tab="chart"]'); pg.wait_for_timeout(500)
+        pg.click('nav#tabs [data-tab="today"]'); pg.wait_for_timeout(300); pg.click('#subnav [data-tab="chart"]'); pg.wait_for_timeout(500)
         pg.click('[data-vote="3"]'); pg.wait_for_timeout(900)
         bd = M.get("/?api=board")["result"]; need(bd.get("votes"), "투표가 집계되지 않았어요")
         pg.evaluate("openSong(2)"); pg.wait_for_selector("#vText", timeout=3000)
@@ -292,6 +298,26 @@ def run_all(B, M):
         shot(k, "06_후기"); o.context.close(); k.context.close()
     review()
 
+    @step("동요샘 소개: 운영진이 고른 공지·행사만 첫 화면에 보임")
+    def home_news():
+        o = B.page(who="owner@test.kr|uidowner", store={"dys-room-sub": "notice"}, fakedb_seed=SEED); o.goto(U + "?tab=room"); ready(o); o.wait_for_timeout(1200)
+        o.fill("#ntT", "겨울 발표회 참가 신청 안내"); o.fill("#ntB", "회원방에서 신청해 주세요."); o.check("#ntHome"); o.click("[data-ntadd]"); o.wait_for_timeout(1000)
+        o.fill("#ntT", "회원끼리 보는 회의 안내"); o.fill("#ntB", "회원만"); o.click("[data-ntadd]"); o.wait_for_timeout(1000)
+        M.rpc("opEvent", OWN, {"d": "2099-12-12", "tm": "15:00", "t": "공개 창작동요 발표회", "p": "햇살초 강당", "big": True})
+        M.rpc("opEvent", OWN, {"d": "2099-12-20", "t": "운영진 회의", "p": "온라인"})
+        o.click("[data-roomsub=cal]"); o.wait_for_timeout(800)
+        ev = [e for e in M.rpc("room", OWN, OWN)["events"] if e["t"] == "공개 창작동요 발표회"][0]
+        o.evaluate(f"roomDo('opEventHome', [OP.token, {json.dumps(ev['id'])}])"); o.wait_for_timeout(1200)
+        g = B.page(); g.goto(U); ready(g); g.wait_for_timeout(1500); shot(g, "00_동요샘소개", True)
+        txt = g.inner_text("#mg03")
+        need("겨울 발표회 참가 신청 안내" in txt, "첫 화면에 올리기로 고른 공지가 안 보여요")
+        need("공개 창작동요 발표회" in txt, "첫 화면에 보이기로 고른 행사가 안 보여요")
+        need("회원끼리 보는 회의 안내" not in txt and "운영진 회의" not in txt, "회원만 볼 공지·행사가 첫 화면에 나와요")
+        need(g.locator("#mg01").count() and g.locator("#mg04").count(), "차례 꼭지가 빠졌어요")
+        g.click(".mg-cover [data-open]"); g.wait_for_selector(".sheet h3", timeout=3000)
+        o.context.close(); g.context.close()
+    home_news()
+
     @step("운영진: 관리 화면 · 계정 목록 · 곡 고치기(공개 동의) · 오늘의 동요 · 내려받기")
     def op_flow():
         pg = B.page(who="owner@test.kr|uidowner", store={"dys-opsub": "home"}); pg.goto(U + "?tab=op"); ready(pg); pg.wait_for_timeout(1500)
@@ -319,7 +345,7 @@ def run_all(B, M):
     @step("휴대폰 화면: 옆으로 밀리지 않음 · 회원방 열림")
     def mobile():
         pg = B.page(390, 844, who="kim@test.kr|uidkim", fakedb_seed=SEED); pg.goto(U); ready(pg); shot(pg, "08_휴대폰", True)
-        for t in ["today", "songs", "room"]:
+        for t in ["home", "today", "songs", "room"]:
             pg.goto(U + "?tab=" + t); ready(pg); pg.wait_for_timeout(500)
             w = pg.evaluate("document.documentElement.scrollWidth"); need(w <= 392, f"'{t}' 화면이 옆으로 밀려요 (폭 {w}px)")
         pg.context.close()
