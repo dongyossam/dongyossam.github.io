@@ -779,7 +779,7 @@ html{overflow-y:scroll;scrollbar-gutter:stable}
 .lib-row .btns{margin:0;flex-wrap:nowrap}
 .scope{gap:6px}
 .scope .chip{display:inline-flex;gap:4px;align-items:center;border-style:solid}
-.btn.danger{color:var(--c0);border-color:var(--c0)}
+.btn.ghost.danger{background:var(--paper);color:var(--c0);border-color:var(--c0)}
 .ev{grid-template-columns:64px minmax(0,1fr) auto;align-items:center;gap:12px;padding:12px 16px}
 .ev.big{border-color:var(--c4)}
 .ev .date{display:grid;justify-items:center;background:var(--c3-soft);border-radius:14px;padding:6px 0}
@@ -924,6 +924,7 @@ details.mg-row p{margin:8px 0 2px;line-height:1.6;color:var(--muted);font-size:1
 .mg-row.ev{align-items:flex-start}.mg-row.ev small{display:block}
 .mg-date{display:grid;min-width:64px;color:var(--c1)}.mg-date small{color:var(--muted)}
 .mg-pin{display:inline-block;font:700 11.5px var(--body);color:#fff;background:var(--c0);border-radius:6px;padding:1px 6px;margin-right:6px;vertical-align:2px}
+.cday{display:block;font:700 11px var(--body);color:var(--c0);background:var(--c0-soft);border-radius:6px;padding:1px 4px;margin:2px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .mg-kind{font-size:12px;background:var(--c3-soft);border-radius:999px;padding:2px 8px;white-space:nowrap}
 .mg-empty{padding:12px 2px;margin:0}
 .mg-band{background:var(--ink);color:#fff;border-radius:20px;padding:28px 30px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:24px;align-items:center}
@@ -2529,7 +2530,7 @@ function homeNews() {
   const box = (title, more, rows, empty) => `<div class="mg-news"><div class="mg-news-h"><h3>${title}</h3>${more}</div>${rows.length ? rows.join("") : `<p class="meta mg-empty">${empty}</p>`}</div>`;
   return `<div class="mg-news-grid">
     ${box("알림", "", (h.notices || []).map(n => `<details class="mg-row"><summary><b>${n.pin ? `<span class="mg-pin">중요</span>` : ""}${esc(n.t)}</b><span class="when">${esc(String(n.at || "").slice(5, 10).replace("-", "."))}</span></summary><p>${esc(n.body || "").replace(/\n/g, "<br>")}</p></details>`), op ? "회원방에서 공지를 쓸 때 '첫 화면에도 올리기'를 고르면 여기에 나와요." : "새 알림이 생기면 여기에 나와요.")}
-    ${box("다가오는 행사", "", (h.events || []).map(e => `<div class="mg-row ev"><span class="mg-date"><b>${md(e.d)}</b>${e.tm ? `<small>${esc(e.tm)}</small>` : ""}</span><span><b>${e.big ? `<span class="mg-pin">큰 행사</span>` : ""}${esc(e.t)}</b>${e.p ? `<small class="meta">${esc(e.p)}</small>` : ""}</span></div>`), op ? "회원방 일정에서 '첫 화면에 보이기'를 고른 행사만 여기에 나와요." : "정해진 행사가 생기면 여기에 나와요.")}
+    ${box("다가오는 행사", "", (h.events || []).concat(annualNext(localDay(), 60)).sort((a, b) => a.d < b.d ? -1 : 1).slice(0, 4).map(e => `<div class="mg-row ev"><span class="mg-date"><b>${md(e.d)}</b>${e.tm ? `<small>${esc(e.tm)}</small>` : ""}</span><span><b>${e.big ? `<span class="mg-pin">큰 행사</span>` : ""}${esc(e.t)}</b>${e.p ? `<small class="meta">${esc(e.p)}</small>` : ""}</span></div>`), op ? "회원방 일정에서 '첫 화면에 보이기'를 고른 행사만 여기에 나와요." : "정해진 행사가 생기면 여기에 나와요.")}
     ${box("누구나 받는 자료", "", (h.lib || []).slice(0, 4).map(i => `<div class="mg-row"><span class="mg-kind">${esc(i.ty || "자료")}</span><b>${esc(String(i.t || "").replace(/^예시: /, ""))}</b><span class="when">${esc(i.by || "")}</span></div>`), "회원 선생님이 누구나 볼 수 있게 올린 자료가 여기에 나와요.")}
   </div>`;
 }
@@ -2734,6 +2735,14 @@ function libQr(id) {
 }
 
 /* 일정 */
+// 해마다 돌아오는 기념일 (달력과 첫 화면 '다가오는 행사'에 저절로 나와요)
+const ANNUAL_DAYS = [["05-25", "동요의 날"]];
+function annualOn(k) { const x = ANNUAL_DAYS.find(([md]) => md === k.slice(5)); return x ? x[1] : ""; }
+function annualNext(from, days) {
+  const out = [], f = new Date(from + "T00:00:00");
+  ANNUAL_DAYS.forEach(([md, t]) => { [f.getFullYear(), f.getFullYear() + 1].forEach(y => { const d = y + "-" + md, gap = (new Date(d + "T00:00:00") - f) / 86400000; if (gap >= 0 && gap <= days) out.push({ id: "annual-" + d, d, tm: "", t, p: "해마다 " + Number(md.slice(0, 2)) + "월 " + Number(md.slice(3)) + "일", big: true, annual: true }); }); });
+  return out;
+}
 function calView() {
   const d = ROOM.data, td = d.today || localDay(), up = d.events.filter(e => e.d >= td), past = d.events.filter(e => e.d < td).reverse().slice(0, 10);
   const row = e => `<div class="card ev${e.big ? " big" : ""}"><div class="date"><b>${Number(e.d.slice(5, 7))}.${Number(e.d.slice(8, 10))}</b><small>${"일월화수목금토"[new Date(e.d + "T00:00:00").getDay()]}${e.tm ? " " + esc(e.tm) : ""}</small></div>
@@ -2745,7 +2754,7 @@ function calView() {
     const dd = new Date(start); dd.setDate(start.getDate() + i);
     if (i >= 35 && dd.getMonth() !== cmo - 1) break;
     const k = localDay(dd), evs = d.events.filter(e => e.d === k);
-    cells += `<div class="dc${dd.getMonth() !== cmo - 1 ? " off" : ""}${k === td ? " is-today" : ""}${dd.getDay() === 0 ? " sun" : dd.getDay() === 6 ? " sat" : ""}"${roomOp() ? ` data-calday="${k}"` : ""}><span class="dn">${dd.getDate()}</span>${evs.map(e => `<button class="cev${e.big ? " big" : ""}${e.me ? " me" : ""}" data-evopen="${esc(e.id)}" title="${esc(e.t)}"><span class="t">${e.tm ? esc(e.tm) + " " : ""}${esc(e.t)}</span></button>`).join("")}</div>`;
+    cells += `<div class="dc${dd.getMonth() !== cmo - 1 ? " off" : ""}${k === td ? " is-today" : ""}${dd.getDay() === 0 ? " sun" : dd.getDay() === 6 ? " sat" : ""}"${roomOp() ? ` data-calday="${k}"` : ""}><span class="dn">${dd.getDate()}</span>${annualOn(k) ? `<span class="cday">${annualOn(k)}</span>` : ""}${evs.map(e => `<button class="cev${e.big ? " big" : ""}${e.me ? " me" : ""}" data-evopen="${esc(e.id)}" title="${esc(e.t)}"><span class="t">${e.tm ? esc(e.tm) + " " : ""}${esc(e.t)}</span></button>`).join("")}</div>`;
   }
   const calCard = `<div class="card rcal-card"><div class="calhead"><button class="btn ghost" data-calmove="-1" aria-label="이전 달">◀</button><h3>${cy}년 ${cmo}월</h3><button class="btn ghost" data-calmove="1" aria-label="다음 달">▶</button>${cm !== td.slice(0, 7) ? `<button class="more" data-calmove="0">이번 달</button>` : ""}</div>
     <div class="rcal">${cells}</div><p class="meta" style="margin:0">일정을 누르면 자세한 내용과 참석 표시를 볼 수 있어요.${roomOp() ? " 빈 날짜를 누르면 아래 일정 올리기에 그 날짜가 들어가요." : ""}</p></div>`;

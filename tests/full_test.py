@@ -256,6 +256,8 @@ def run_all(B, M):
     def room_cal():
         pg = S["kimroom"]
         pg.click("[data-roomsub=cal]"); pg.wait_for_timeout(600); need(pg.locator(".rcal").count(), "달력이 안 보여요")
+        pg.evaluate("ROOM.calM = '2027-05'; render()"); pg.wait_for_timeout(300)
+        need("동요의 날" in pg.inner_text(".rcal"), "5월 달력에 동요의 날이 안 보여요")
         pg.click("[data-roomsub=notice]"); pg.wait_for_timeout(500); need(pg.inner_text("#view").strip(), "공지 화면이 비어 있어요")
     room_cal()
 
