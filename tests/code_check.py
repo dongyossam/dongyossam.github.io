@@ -11,7 +11,7 @@
   3. 단추 → 함수    : 화면이 서버에 부탁하는 기능 이름(rpc·act·opCall·roomDo …)이 서버 FN_ 목록에 있는지,
                      서버 FN_ 목록의 함수가 실제로 있는지, onclick 이 부르는 함수가 있는지,
                      단추에 붙은 data-○○ 가 화면 코드 어딘가에서 실제로 쓰이는지
-  4. 판 번호        : Collector.gs SERVER_VERSION · index.html APP.version · sw.js 캐시 이름 · 설치안내.txt '지금 판'
+  4. 판 번호        : "서버판.화면판" — Collector.gs SERVER_VERSION·설치안내.txt '지금 판' = 앞 숫자, index.html APP.version = sw.js 캐시 이름
 하나라도 걸리면 끝에 '통과 못 함'과 함께 0이 아닌 값으로 끝나요.
 """
 import json, os, re, subprocess, sys, tempfile
@@ -135,15 +135,19 @@ def check_wiring():
 
 
 def check_versions():
-    found = {}
-    m = re.search(r"const SERVER_VERSION = (\d+)", rd("Collector.gs")); found["Collector.gs SERVER_VERSION"] = m and m.group(1)
-    m = re.search(r"version:\s*(\d+)", rd("index.html")); found["index.html APP.version"] = m and m.group(1)
-    m = re.search(r"var C = 'dongyo-shell-(\d+)'", rd("sw.js")); found["sw.js 캐시 이름"] = m and m.group(1)
-    m = re.search(r"지금 판:\s*(\d+)", rd("설치안내.txt")); found["설치안내.txt 지금 판"] = m and m.group(1)
-    vals = set(found.values())
-    if None in vals: bad("판 번호를 못 찾은 곳: " + ", ".join(k for k, v in found.items() if v is None))
-    elif len(vals) > 1: bad("판 번호가 서로 달라요: " + ", ".join(f"{k}={v}" for k, v in found.items()))
-    else: ok(f"판 번호 {vals.pop()} (4곳 모두 같음)")
+    """판 번호는 "서버판.화면판" — 서버판은 Collector.gs·설치안내.txt, 화면판은 index.html·sw.js."""
+    srv = re.search(r"const SERVER_VERSION = (\d+)", rd("Collector.gs"))
+    app = re.search(r"version:\s*\"(\d+)\.(\d+)\"", rd("index.html"))
+    sw = re.search(r"var C = 'dongyo-shell-([\d.]+)'", rd("sw.js"))
+    doc = re.search(r"지금 판:\s*(\d+)", rd("설치안내.txt"))
+    miss = [k for k, v in [("Collector.gs SERVER_VERSION", srv), ("index.html APP.version(서버판.화면판)", app), ("sw.js 캐시 이름", sw), ("설치안내.txt 지금 판", doc)] if not v]
+    if miss: bad("판 번호를 못 찾은 곳: " + ", ".join(miss)); return
+    av = f"{app.group(1)}.{app.group(2)}"; probs = []
+    if app.group(1) != srv.group(1): probs.append(f"화면 판 {av}의 앞 숫자가 서버 판 {srv.group(1)}과 달라요")
+    if doc.group(1) != srv.group(1): probs.append(f"설치안내.txt 지금 판 {doc.group(1)} ≠ 서버 판 {srv.group(1)}")
+    if sw.group(1) != av: probs.append(f"sw.js 캐시 이름 {sw.group(1)} ≠ 화면 판 {av}")
+    if probs: bad("판 번호가 서로 달라요: " + "; ".join(probs))
+    else: ok(f"판 번호 화면 {av} · 서버 {srv.group(1)} (4곳 맞음)")
 
 
 def main():

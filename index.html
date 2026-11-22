@@ -883,6 +883,28 @@ nav#tabs button:nth-child(1){--c:var(--c0)}nav#tabs button:nth-child(2){--c:var(
 #subnav button{font:400 18px var(--display);border:2px solid var(--line);background:var(--paper);color:var(--ink);border-radius:999px;padding:7px 18px;cursor:pointer}
 #subnav button[aria-current="page"]{background:var(--c3);border-color:var(--c3);color:#fff}
 #subnav .sub-title{font:400 18px var(--display);color:var(--c3);align-self:center;margin-right:4px}
+/* 사용 안내 (dyh-) */
+.dyh-btn{all:unset;box-sizing:border-box;display:inline-flex;align-items:center;gap:7px;min-height:44px;padding:0 6px;font:700 15px var(--body);color:var(--ink);cursor:pointer;text-decoration:none}
+.dyh-btn:hover,.dyh-btn:focus-visible{text-decoration:underline;text-underline-offset:3px}
+.dyh-btn:focus-visible{outline:2px solid var(--c3);outline-offset:2px;border-radius:8px}
+.dyh-q{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;background:#1F2633;color:#fff;font:700 14px/1 var(--body)}
+.dyh-scrim{position:fixed;inset:0;background:rgba(20,28,44,.45);z-index:200;display:grid;place-items:center;padding:16px}
+.dyh-box{background:var(--paper);color:var(--ink);border-radius:18px;width:min(560px,100%);max-height:min(86vh,760px);display:flex;flex-direction:column;box-shadow:0 24px 48px -18px rgba(20,28,44,.5);overflow:hidden}
+.dyh-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:16px 18px 12px;border-bottom:1px solid var(--line)}
+.dyh-head h2{margin:0;font-family:var(--display);font-weight:400;font-size:22px}
+.dyh-head h2::before{content:none!important;display:none!important}
+.dyh-x{all:unset;box-sizing:border-box;width:44px;height:44px;display:grid;place-items:center;border-radius:12px;cursor:pointer;font-size:24px;line-height:1;color:var(--ink)}
+.dyh-x:hover,.dyh-x:focus-visible{background:var(--line)}
+.dyh-body{overflow:auto;padding:4px 18px;overscroll-behavior:contain}
+.dyh-list{list-style:none;margin:0;padding:0}
+.dyh-list>li{display:grid;grid-template-columns:26px minmax(0,1fr);gap:12px;padding:14px 0;border-top:1px solid var(--line)}
+.dyh-list>li:first-child{border-top:0}
+.dyh-num{width:24px;height:24px;border-radius:5px;background:var(--ink);color:#fff;display:grid;place-items:center;font:700 13px var(--body);margin-top:1px}
+.dyh-list b{display:block;font-size:16px;margin-bottom:4px}
+.dyh-list ul{margin:0;padding-left:18px;color:var(--muted);line-height:1.6;font-size:14.5px}
+.dyh-foot{display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap;padding:12px 18px 16px;border-top:1px solid var(--line)}
+.dyh-foot a.btn{text-decoration:none}
+@media (max-width:480px){.dyh-btn{font-size:13px;gap:5px;padding:0 2px}.dyh-q{width:20px;height:20px;font-size:13px}.dyh-head h2{font-size:19px}.dyh-body,.dyh-head,.dyh-foot{padding-left:14px;padding-right:14px}}
 /* 동요샘 소개(첫 화면) — 잡지처럼 차례와 번호 붙은 꼭지 */
 .mg h2{display:block}.mg h2::before{content:none!important;display:none!important}
 .mg-h,.mg-q,.mg-band h3,.mg-p{word-break:keep-all;overflow-wrap:break-word}
@@ -965,7 +987,7 @@ details.mg-row p{margin:8px 0 2px;line-height:1.6;color:var(--muted);font-size:1
       <rect x="374.5" y="74" width="2.2" height="22"/><rect x="392.5" y="68" width="2.2" height="22"/><path d="M374.5 74l20-6v4l-20 6z"/></g>
   </svg>
   <div class="title t-long"><h1><button class="home" data-tab="home" title="첫 화면으로" aria-label="동요샘 첫 화면으로"><img class="logo" src="img/logo.png" alt="동요샘" width="371" height="272"><span class="tbox"><span class="h1t long" id="h1t"><span class="r0">전</span><span class="r1">북</span><span class="r2">초</span><span class="r3">등</span><span class="r0">음</span><span class="r1">악</span><span class="r2">연</span><span class="r3">구</span><span class="r0">회</span></span><span class="h1sub" id="h1sub">동요를 사랑하는 선생님들이 함께 만들고 불러요</span></span></button></h1></div>
-  <div class="hd-acts"><button class="app-install qr-btn" id="qrOpen" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/></g><g fill="currentColor"><rect x="5.5" y="5.5" width="2" height="2"/><rect x="16.5" y="5.5" width="2" height="2"/><rect x="5.5" y="16.5" width="2" height="2"/><rect x="14" y="14" width="3" height="3"/><rect x="18" y="18" width="3" height="3"/><rect x="18" y="14" width="3" height="2"/><rect x="14" y="18" width="2" height="3"/></g></svg><span>QR로 들어오기</span></button>
+  <div class="hd-acts"><button class="dyh-btn" id="dyhOpen" type="button" aria-haspopup="dialog"><span class="dyh-q" aria-hidden="true">?</span>사용 안내</button><button class="app-install qr-btn" id="qrOpen" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/></g><g fill="currentColor"><rect x="5.5" y="5.5" width="2" height="2"/><rect x="16.5" y="5.5" width="2" height="2"/><rect x="5.5" y="16.5" width="2" height="2"/><rect x="14" y="14" width="3" height="3"/><rect x="18" y="18" width="3" height="3"/><rect x="18" y="14" width="3" height="2"/><rect x="14" y="18" width="2" height="3"/></g></svg><span>QR로 들어오기</span></button>
   <button class="app-install" id="appInstall" type="button" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="2" width="12" height="20" rx="3" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 7v7M9 11l3 3 3-3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>앱 아이콘 만들기</span></button></div>
   </div>
   <svg class="hills" viewBox="0 96 400 54" preserveAspectRatio="none" aria-hidden="true">
@@ -1003,11 +1025,12 @@ details.mg-row p{margin:8px 0 2px;line-height:1.6;color:var(--muted);font-size:1
   <g fill="#F7953E"><circle cx="300" cy="96" r="5"/><circle cx="292" cy="92" r="4" fill="#FFF"/></g>
 </svg></div>
 <div id="sheetHost"></div>
+<div id="dyhHost"></div>
 <div id="toastHost"></div>
 
 <script>
 /* 동요샘 노래상자 화면 — 서버(national.json 의 collector)가 있으면 로그인해서 반별로 기록, 없으면 체험 모드 */
-const APP = { version: 12 /* 판 번호: Collector.gs SERVER_VERSION·sw.js·설치안내.txt 와 같게 */, q: {}, live: false, server: '', token: '', acc: null, cid: '', contact: '', relay: { id: '예시 릴레이', song: 3 }, busy: false, authView: 'login', booting: true, todaySong: null, today: '', yearStart: '' };
+const APP = { version: "12.1" /* 판 번호 "서버판.화면판": 앞 숫자는 Collector.gs SERVER_VERSION·설치안내.txt 와 같게, sw.js 캐시 이름은 이 판 그대로 */, q: {}, live: false, server: '', token: '', acc: null, cid: '', contact: '', relay: { id: '예시 릴레이', song: 3 }, busy: false, authView: 'login', booting: true, todaySong: null, today: '', yearStart: '' };
 new URLSearchParams(location.search).forEach(function (v, k) { APP.q[k] = v; });
 const store = { get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d } catch (e) { return d } }, set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)) } catch (e) {} }, del(k) { try { localStorage.removeItem(k) } catch (e) {} } };
 let PERIOD = store.get("dys-period", "month") === "year" ? "year" : "month";
@@ -2505,6 +2528,35 @@ document.addEventListener("click", e => {
 }, true);
 if (/[?&]qr=1\b/.test(location.search)) setTimeout(qrOpen, 300);
 
+
+/* ---------- 사용 안내 ---------- */
+const DYH_TITLE = "동요샘 간략 사용법";
+const DYH_ITEMS = [
+  ["첫 화면에서 소식 보기", ["'동요샘 소개'에서 연구회 소개와 '새 소식'을 봅니다.", "알림·다가오는 행사·누구나 받는 자료가 한곳에 모여 있어요.", "알림 제목을 누르면 내용이 펼쳐져요."]],
+  ["노래 찾아 부르기", ["'노래상자'의 '오늘의 동요'나 '노래 찾기'에서 곡을 눌러요.", "'노래방 화면'을 누르면 가사가 한 줄씩 크게 나오고, '다음 줄'이나 → 키로 넘겨요.", "아래 재생 막대로 다른 곡도 이어서 들어요."]],
+  ["우리 반 노래 도장", ["'우리 반'에서 '반 만들기'로 반을 만들어요. 반은 여러 개 만들 수 있어요.", "부른 노래는 '우리 반이 불렀어요'를 눌러 도장을 찍어요."]],
+  ["전국 무대와 차트", ["'전국 무대'에서 지역별로 얼마나 불렀는지 순위를 봐요.", "'동요샘 차트'에서 '투표'를 눌러 이달의 노래를 골라요."]],
+  ["우리 반 가사 바꾸기", ["곡 화면에서 우리 반이 바꾼 가사를 적고 '가사 올리기'를 눌러요.", "올린 가사는 운영진이 확인해요."]],
+  ["회원방 쓰기", ["'자료방'·'일정'·'공지'·'곡집 원고'·'활동 후기'·'화상 회의'가 있어요.", "자료를 올릴 때 '누구나'·'회원만'·'운영진만' 가운데 볼 사람을 골라요.", "'일정'에서 날짜를 누르고 '참석할게요'로 참석을 알려요."]],
+  ["함께 쓰기", ["'대화방'에서 회원 선생님들과 함께 이야기해요.", "이름을 누르면 그 선생님께만 쪽지를 보내요. 상대가 쓰는 중이면 '입력하고 있어요'가 떠요.", "곡과 자료의 '바로가기 QR'로 다른 선생님께 바로 보여 줘요."]],
+  ["자주 묻는 것", ["기록은 동요샘 구글 시트에 모여요. 다른 기기에서도 같은 구글 계정으로 로그인하면 그대로 보여요.", "'앱 아이콘 만들기'로 휴대폰 첫 화면에 아이콘을 둘 수 있어요.", "실수로 지운 자료는 운영진이 30일 안에 되살릴 수 있어요."]]
+];
+function dyhOpen() {
+  const host = $("#dyhHost"), demo = APP.q.demo !== undefined;
+  host.innerHTML = `<div class="dyh-scrim" data-dyhclose><div class="dyh-box" role="dialog" aria-modal="true" aria-labelledby="dyhT">
+    <div class="dyh-head"><h2 id="dyhT">${DYH_TITLE}</h2><button class="dyh-x" type="button" data-dyhclose aria-label="닫기">×</button></div>
+    <div class="dyh-body"><ol class="dyh-list">${DYH_ITEMS.map(([t, lines], i) => `<li><span class="dyh-num">${i + 1}</span><div><b>${esc(t)}</b><ul>${lines.map(l => `<li>${esc(l)}</li>`).join("")}</ul></div></li>`).join("")}</ol></div>
+    <div class="dyh-foot">${demo ? "" : `<a class="btn ghost" href="${location.pathname}?demo" target="_blank" rel="noopener">예시로 미리 눌러 보기</a>`}<button class="btn" type="button" data-dyhclose>확인</button></div>
+  </div></div>`;
+  host.querySelector(".dyh-x").focus();
+}
+function dyhClose() { const h = $("#dyhHost"); if (h && h.innerHTML) { h.innerHTML = ""; const b = $("#dyhOpen"); if (b) b.focus(); } }
+document.addEventListener("click", e => {
+  if (e.target.closest("#dyhOpen")) { dyhOpen(); return; }
+  const c = e.target.closest("[data-dyhclose]");
+  if (c && (c.classList.contains("dyh-scrim") ? e.target === c : true)) dyhClose();
+});
+document.addEventListener("keydown", e => { if (e.key === "Escape" && $("#dyhHost") && $("#dyhHost").innerHTML) { e.stopPropagation(); dyhClose(); } }, true);
 
 /* ---------- 동요샘 소개 (첫 화면) ---------- */
 const DONGYO_YT = "https://www.youtube.com/channel/UCZRQeoHfqumAMBrFrUUN11A"; // 동요샘 앙상블 채널 (공식 채널이 생기면 바꾸기)
